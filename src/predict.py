@@ -97,6 +97,70 @@ def available() -> bool:
     return (MODELS / "manifest.json").exists() and (MODELS / "m1.pt").exists()
 
 
+@lru_cache(maxsize=1)
+def _esm():
+    """ESM-2 35M, loaded once and only if an unseen sequence actually arrives.
+
+    The macOS python.org build ships no CA bundle, so torch.hub's download of
+    the ESM weights fails with CERTIFICATE_VERIFY_FAILED and the cached file
+    ends up being an HTML error page that then fails to unpickle. Point
+    OpenSSL at certifi's bundle before any download is attempted.
+    """
+    import os
+
+    try:
+        import certifi
+
+        os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+        os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+    except ImportError:
+        pass
+
+    from src.embed import load_esm
+
+    return load_esm()
+
+
+@lru_cache(maxsize=256)
+def embed_on_demand(sequence: str) -> np.ndarray | None:
+    """Mean-pooled ESM vector for a sequence that was not precomputed."""
+    try:
+        from src.embed import embed_sequences
+
+        model, alphabet, device = _esm()
+        mean, _ = embed_sequences([sequence], model, alphabet, device, batch_size=1)
+        return mean[0]
+    except Exception:
+        return None
+
+
+@lru_cache(maxsize=256)
+def embed_allele(hla: str) -> np.ndarray | None:
+    """Groove sequence for any IMGT allele, then its ESM vector.
+
+    The local IMGT protein FASTA holds every deposited allele, so an allele
+    absent from the training table is still resolvable: look up its sequence,
+    take the mature alpha1-alpha2 groove by the same rule used to build the
+    training features, and embed it.
+    """
+    try:
+        import sys
+        from pathlib import Path as _P
+
+        sys.path.insert(0, str(_P(__file__).resolve().parent.parent))
+        from scripts.verify_hla_seq import read_fasta, rebuild
+
+        fasta = _P("data/raw/hla_prot.fasta")
+        if not fasta.exists():
+            return None
+        groove, _, _ = rebuild(read_fasta(fasta), hla)
+        if groove is None:
+            return None
+        return embed_on_demand(groove)
+    except Exception:
+        return None
+
+
 def predict(peptide: str, hla: str) -> Result | None:
     """None when the query cannot be served (no weights, or no embedding)."""
     if not available():
@@ -114,14 +178,17 @@ def predict(peptide: str, hla: str) -> Result | None:
         ).astype(np.float32)
         model, tag = b["m1"], "m1"
     else:
-        # M2n needs an ESM vector for both sides. Peptides outside the training
-        # table have none precomputed, so the query cannot be served rather
-        # than being answered from a wrong vector.
-        if peptide not in b["pep_lu"] or hla not in b["hla_lu"]:
+        # M2n needs an ESM vector for both sides. Anything outside the training
+        # table has none precomputed, so it is embedded on demand -- which is
+        # the entire point of a sequence-based model: an allele it has never
+        # seen still has a sequence, and that sequence can be read.
+        pep_vec = (b["pep_arr"][b["pep_lu"][peptide]]
+                   if peptide in b["pep_lu"] else embed_on_demand(peptide))
+        hla_vec = (b["hla_arr"][b["hla_lu"][hla]]
+                   if hla in b["hla_lu"] else embed_allele(hla))
+        if pep_vec is None or hla_vec is None:
             return None
-        raw = np.concatenate(
-            [b["pep_arr"][b["pep_lu"][peptide]], b["hla_arr"][b["hla_lu"][hla]]]
-        )[None, :]
+        raw = np.concatenate([pep_vec, hla_vec])[None, :]
         x = ((raw - b["mu"]) / b["sd"]).astype(np.float32)
         model, tag = b["m2"], "m2n"
 

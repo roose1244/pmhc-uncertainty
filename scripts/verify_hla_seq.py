@@ -61,20 +61,26 @@ def lookup(seqs: dict[str, str], hla: str) -> tuple[str | None, str | None]:
     return None, None
 
 
-def groove(seq: str) -> tuple[str | None, str]:
+def groove(seq: str, locus: str = "") -> tuple[str | None, str]:
     """Mature alpha1-alpha2 182-mer.
 
     Full-length entries carry a 24-residue leader, so the mature chain starts
-    at the GSHSM motif. Some alleles (A*02:50, A*24:19, B*08:03) are deposited
-    as partial 181-mers that begin at SHSM -- they are missing the leader *and*
-    the leading G of the mature chain, so slicing at a fixed offset silently
-    reads the wrong frame. Restore the G instead.
+    one residue before the SHSM motif. That first residue is locus-dependent:
+    HLA-A and HLA-B begin GSHSM, HLA-C begins CSHSM. Matching GSHSM alone
+    silently fails on every C allele, which only shows up once a C allele is
+    queried.
+
+    Some alleles (A*02:50, A*24:19, B*08:03) are deposited as partial 181-mers
+    beginning at SHSM -- missing the leader *and* that first residue -- so
+    slicing at a fixed offset reads the wrong frame. Restore the residue the
+    locus implies.
     """
-    start = seq.find("GSHSM")
-    if start >= 0:
-        return seq[start : start + GROOVE_LEN], "full"
+    start = seq.find("SHSM")
+    if start > 0:
+        return seq[start - 1 : start - 1 + GROOVE_LEN], "full"
     if seq.startswith("SHSM"):
-        return ("G" + seq)[:GROOVE_LEN], "partial(+G)"
+        first = "C" if locus.upper().startswith("C") else "G"
+        return (first + seq)[:GROOVE_LEN], f"partial(+{first})"
     return None, "unrecognised"
 
 
@@ -87,7 +93,8 @@ def rebuild(seqs: dict[str, str], hla: str) -> tuple[str | None, str, str]:
     if seq is None:
         return None, "", f"no IMGT entry for {parent}"
 
-    grv, kind = groove(seq)
+    # The locus decides the first mature residue for partial deposits.
+    grv, kind = groove(seq, locus=parent.replace("HLA-", "")[:1])
     if grv is None or len(grv) != GROOVE_LEN:
         return None, name, f"{kind}, got {len(grv) if grv else 0} residues"
 
