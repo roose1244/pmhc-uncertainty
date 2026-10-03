@@ -37,6 +37,7 @@ SPLIT_DIR = Path("data/splits")
 OUT = Path("results/tables/seed_variance.csv")
 
 SPLITS = ["hla", "random"]
+CONTROL_SEEDS = 3  # random is slow and only needs to answer "is it stable?"
 DEFAULT_SEEDS = 5
 
 
@@ -45,8 +46,11 @@ def run_model(name: str, master, split, split_name: str, seed: int, stores) -> f
     pep_mean, hla_mean, pep_res, pep_lu, hla_res, hla_lu = stores
 
     if name in ("m1", "m1pep"):
-        m1mod.SEED = seed
-        _, metrics, _ = m1mod.train_one(master, split, peptide_only=(name == "m1pep"))
+        # train_one takes `seed` as a default argument, bound at definition
+        # time, so patching the module global has no effect. Pass it.
+        _, metrics, _ = m1mod.train_one(
+            master, split, peptide_only=(name == "m1pep"), seed=seed
+        )
     elif name in ("m2", "m2n"):
         m2mod.SEED = seed
         _, metrics = m2mod.train_one(
@@ -82,7 +86,8 @@ def main() -> int:
         split = pd.read_parquet(SPLIT_DIR / f"{split_name}.parquet")
         for model in ["m1", "m1pep", "m2", "m2n", "m3"]:
             scores = []
-            for seed in seeds:
+            use = seeds if split_name == 'hla' else seeds[:CONTROL_SEEDS]
+            for seed in use:
                 try:
                     scores.append(run_model(model, master, split, split_name, seed, stores))
                 except Exception as exc:
