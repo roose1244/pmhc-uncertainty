@@ -37,7 +37,24 @@ with col1:
     peptide = st.text_input("Peptide", value="VTTEVAFGL", help="8–11 amino acids; all training data is 9-mers.").strip().upper()
 with col2:
     default = names.index("HLA-A*02:01") if "HLA-A*02:01" in names else 0
-    hla = st.selectbox("HLA allele", names, index=default)
+    picked = st.selectbox("HLA allele", names + ["Other (type below)…"], index=default)
+
+# The dropdown holds only the 75 alleles with training data, so without this
+# the reliability panel can never show a genuinely unseen allele -- which is
+# the single case the project exists to warn about. assess() already handles
+# an unknown allele; this makes that path reachable.
+if picked.startswith("Other"):
+    hla = st.text_input(
+        "Allele not in the training set",
+        value="HLA-B*15:02",
+        help="Any IMGT name, e.g. HLA-B*57:01. Used to show what the tool "
+             "says about an allele the model has never measured.",
+    ).strip()
+    if not hla:
+        st.warning("Enter an allele name.")
+        st.stop()
+else:
+    hla = picked
 
 error = validate_peptide(peptide)
 if error:
