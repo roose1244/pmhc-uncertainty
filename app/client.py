@@ -80,8 +80,30 @@ def _placeholder(peptide: str, hla: str) -> Prediction:
     return Prediction(mean, std, mean - 2.2 * std, mean + 2.2 * std, "placeholder")
 
 
+def _local(peptide: str, hla: str) -> Prediction | None:
+    """Frozen models on disk, routed by whether the allele was in training.
+
+    Tried before the network: the demo should work with no endpoint deployed
+    and no connectivity, and these are the same weights an endpoint would
+    serve. Returns None when there is nothing to serve from.
+    """
+    try:
+        import sys
+        from pathlib import Path
+
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+        from src.predict import predict as local_predict
+
+        r = local_predict(peptide, hla)
+        if r is None:
+            return None
+        return Prediction(r.mean, r.std, r.lo, r.hi, f"local:{r.model}")
+    except Exception:
+        return None
+
+
 def predict(peptide: str, hla: str, timeout: int = TIMEOUT) -> Prediction:
-    """Model call, with a cached fallback and then a placeholder.
+    """Model call: endpoint, then local weights, then cache, then placeholder.
 
     Never raises: a demo that dies on a network blip is worse than one that
     says where its numbers came from.
@@ -101,7 +123,11 @@ def predict(peptide: str, hla: str, timeout: int = TIMEOUT) -> Prediction:
                 float(d["lo"]), float(d["hi"]), "endpoint",
             )
         except Exception:
-            pass  # fall through to cache, then placeholder
+            pass  # fall through to local weights, cache, then placeholder
+
+    got = _local(peptide, hla)
+    if got is not None:
+        return got
 
     hit = _cache().get(f"{hla}|{peptide}")
     if hit:
