@@ -121,6 +121,24 @@ def _esm():
     return load_esm()
 
 
+@lru_cache(maxsize=1)
+def _prewarmed() -> dict[str, np.ndarray]:
+    """Vectors written by scripts/prewarm_cache.py, if that has been run.
+
+    Checked before any on-demand embedding, so a demo query never waits on an
+    ESM load in a freshly started process. Absent file is not an error: it
+    just means every novel query embeds itself.
+    """
+    path = FEATURES / "prewarmed.npz"
+    if not path.exists():
+        return {}
+    try:
+        with np.load(path) as z:
+            return {k: z[k] for k in z.files}
+    except Exception:
+        return {}
+
+
 @lru_cache(maxsize=256)
 def embed_on_demand(sequence: str) -> np.ndarray | None:
     """Mean-pooled ESM vector for a sequence that was not precomputed."""
@@ -182,10 +200,19 @@ def predict(peptide: str, hla: str) -> Result | None:
         # table has none precomputed, so it is embedded on demand -- which is
         # the entire point of a sequence-based model: an allele it has never
         # seen still has a sequence, and that sequence can be read.
-        pep_vec = (b["pep_arr"][b["pep_lu"][peptide]]
-                   if peptide in b["pep_lu"] else embed_on_demand(peptide))
-        hla_vec = (b["hla_arr"][b["hla_lu"][hla]]
-                   if hla in b["hla_lu"] else embed_allele(hla))
+        warm = _prewarmed()
+        if peptide in b["pep_lu"]:
+            pep_vec = b["pep_arr"][b["pep_lu"][peptide]]
+        else:
+            pep_vec = warm.get(f"pep::{peptide}")
+            if pep_vec is None:
+                pep_vec = embed_on_demand(peptide)
+        if hla in b["hla_lu"]:
+            hla_vec = b["hla_arr"][b["hla_lu"][hla]]
+        else:
+            hla_vec = warm.get(f"hla::{hla}")
+            if hla_vec is None:
+                hla_vec = embed_allele(hla)
         if pep_vec is None or hla_vec is None:
             return None
         raw = np.concatenate([pep_vec, hla_vec])[None, :]
