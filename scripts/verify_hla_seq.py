@@ -33,11 +33,11 @@ GROOVE_LEN = 182
 MUTANT = re.compile(r"^(HLA-[A-Z]+\*\d+:\d+)\((\w)(\d+)(\w)\)$")
 
 
-def read_fasta(path: Path) -> dict[str, str]:
+def read_fasta(path: Path | str) -> dict[str, str]:
     """IMGT allele name -> full protein sequence, from the second header field."""
     seqs: dict[str, list[str]] = {}
     name = None
-    for line in path.read_text().splitlines():
+    for line in Path(path).read_text().splitlines():
         line = line.strip()
         if line.startswith(">"):
             name = line.split()[1]
