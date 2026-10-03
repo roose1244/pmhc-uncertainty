@@ -260,8 +260,37 @@ alone.
 | M2-peptide | hla | 0.056 | HLA mean-pool adds nothing here |
 
 Mean-pooling 182 HLA residues washes out five substitutions. That is why M3
-is residue-level, not another mean-pool. The uncertainty ensemble should use
-**M1** until M3 beats it on val. Do not retune M2 on the HLA test set.
+is residue-level, not another mean-pool. The uncertainty ensemble uses **M1**.
+Do not retune M2 on the HLA test set.
+
+## M1 ensemble (locked)
+
+Five members, seeds 0–4, each trained on a bootstrap of the train fold.
+`y_mean` / `y_std` are in log space. 90% intervals are split-conformal on
+`calib` only: `|y - y_mean| / max(y_std, val 1st-percentile floor)`.
+`q_norm` is about 5, so the members agree with each other more tightly than
+they match experiment. Conformal rescales them. A constant-width interval is
+the baseline.
+
+| Split | Spearman | err–unc Spearman | 90% coverage | MAE all → most certain 50% | Constant-width 50% |
+|---|---:|---:|---:|---|---:|
+| random | 0.766 | 0.199 | 0.907 | 3.45 h → 2.77 h | 3.36 h |
+| peptide | 0.674 | 0.122 | 0.909 | 4.11 h → 3.45 h | 3.77 h |
+| cluster | 0.665 | 0.149 | 0.913 | 3.80 h → 3.20 h | 3.81 h |
+| hla | −0.140 | −0.096 | 0.905 | 1.70 h → 1.69 h | 1.71 h |
+
+H2 holds weakly where the allele was seen: higher `y_std` goes with higher
+error, and keeping the more certain half lowers MAE below a random retention.
+H3 does not: on `B*15:02` the ranking is still wrong and `y_std` does not
+mark the worse rows. Coverage stays near 90% because the interval gets wide
+(median width about 14 h on random, 23 h on `B*15:02`), not because the
+model has recognised the new allele.
+
+```bash
+python scripts/train_ensemble.py
+```
+
+Predictions: `results/predictions/m1ens_*.parquet` with `m0`…`m4`, `lo`, `hi`.
 
 ## Owners
 
