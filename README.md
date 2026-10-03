@@ -223,6 +223,15 @@ MSE only. Bootstrap 95% CI, 1,000 resamples.
 HLA MAE looks smaller because B*15:02 complexes are short-lived (mean 2.0 h
 vs 5.4 h globally). Ranking is the metric that matters.
 
+On `hla.parquet`, M1's one-hot is an all-zero vector for val, test, and calib,
+because those alleles are absent from train. That is not the same model as
+M1-peptide. M1-peptide was trained without an HLA input. M1 was trained with
+a real one-hot, then shown zeros, and those zeros make it worse: Spearman
+−0.21 versus −0.04 for M1-peptide and +0.04 for M2. Do not describe that as
+M1 beating M2 on a new allele. The peptide-split comparison (0.67 versus 0.54)
+is the one where the one-hot is doing work. The ensemble is that model. Its
+90% intervals on the HLA split calibrate the zero-vector network.
+
 ```bash
 python scripts/train_m1.py
 ```
