@@ -30,3 +30,6 @@ results/tables/*
 *.pth
 *.bin
 *.ckpt
+
+# app runtime artefacts
+app/cache/demo_predictions.json
