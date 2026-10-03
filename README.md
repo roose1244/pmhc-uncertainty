@@ -221,15 +221,47 @@ MSE only. Bootstrap 95% CI, 1,000 resamples.
 | M1-peptide | hla | −0.035 [−0.141, 0.064] | 1.66 | BLOSUM alone is also uninformative here |
 
 HLA MAE looks smaller because B*15:02 complexes are short-lived (mean 2.0 h
-vs 5.4 h globally). Ranking is the metric that matters. This is why M2 uses
-an HLA protein sequence instead of an allele name.
+vs 5.4 h globally). Ranking is the metric that matters.
 
 ```bash
 python scripts/train_m1.py
 ```
 
-Predictions: `results/predictions/m1_*.parquet`, `m1pep_*.parquet`
-and `/results/` on volume `pmhc-data`.
+## HLA sequences and ESM-2 embeddings
+
+`hla_seq` is now filled from IPD-IMGT/HLA protein FASTA (`Latest`). Mature
+α1–α2 = 182 residues starting at the GSHSM motif. `(C67S)` alleles are the
+parent groove with position 67 set to Ser. Developer 2 should verify, not
+re-fetch unless they disagree.
+
+`B*15:01` vs `B*15:02` differ at mature positions 63, 94, 95, 113, 156.
+`A*02:01` and `A*02:12` share an identical 182-mer in this extract.
+
+```bash
+python scripts/fetch_hla_sequences.py
+python scripts/embed_features.py
+python scripts/train_m2.py
+```
+
+Frozen `esm2_t12_35M_UR50D`, mean-pool, BOS/EOS dropped. Shapes:
+peptide `(5633, 480)` and `(5633, 9, 480)`; HLA `(75, 480)` and `(75, 182, 480)`.
+
+## M2 result (locked)
+
+ESM peptide + ESM HLA mean-pools → the same MLP. Peptide-only is ESM peptide
+alone.
+
+| Model | Split | Spearman | vs M1 |
+|---|---|---:|---|
+| M2 | random | 0.634 | worse than M1 0.765 |
+| M2 | peptide | 0.543 | worse than M1 0.642 |
+| M2 | cluster | 0.529 | worse than M1 0.629 |
+| M2 | hla | 0.037 | near zero; M1 was −0.21 |
+| M2-peptide | hla | 0.056 | HLA mean-pool adds nothing here |
+
+Mean-pooling 182 HLA residues washes out five substitutions. That is why M3
+is residue-level, not another mean-pool. The uncertainty ensemble should use
+**M1** until M3 beats it on val. Do not retune M2 on the HLA test set.
 
 ## Owners
 
