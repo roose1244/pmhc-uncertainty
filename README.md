@@ -197,11 +197,39 @@ modal volume put pmhc-data data/splits /data/splits
 - [x] `data/processed/master.parquet` (28,166 rows)
 - [x] four splits with leakage asserts
 - [x] uploaded to `pmhc-data`
-- [ ] M1 baseline (next)
+- [x] M1 baseline + peptide-only ablation
 
 Random-split peptide leakage is ~0.93 by construction. Peptide and cluster
 splits are 0.00. HLA test is only `HLA-B*15:02`; val is only `HLA-B*27:02`;
 `HLA-A*02:01`, `HLA-B*15:01`, and `HLA-B*27:05` stay in train.
+
+## M1 result (locked; do not retune on test)
+
+BLOSUM50 9-mer + train-only HLA one-hot → MLP. Peptide-only is the same MLP
+without the HLA vector. Unseen alleles are a zero vector. Early stop on val
+MSE only. Bootstrap 95% CI, 1,000 resamples.
+
+| Model | Split | Spearman (95% CI) | MAE (h) | What it means |
+|---|---|---|---:|---|
+| M1 | random | 0.765 [0.747, 0.782] | 3.54 | sanity; peptides leak |
+| M1-peptide | random | 0.411 | 4.64 | HLA identity is doing real work |
+| M1 | peptide | 0.642 [0.617, 0.665] | 4.45 | H1 holds for unseen sequences |
+| M1-peptide | peptide | 0.327 | 5.04 | |
+| M1 | cluster | 0.629 [0.605, 0.653] | 4.07 | H1 holds for unseen families |
+| M1-peptide | cluster | 0.298 | 4.59 | |
+| M1 | hla | −0.210 [−0.305, −0.114] | 1.80 | one-hot cannot transfer to B*15:02 |
+| M1-peptide | hla | −0.035 [−0.141, 0.064] | 1.66 | BLOSUM alone is also uninformative here |
+
+HLA MAE looks smaller because B*15:02 complexes are short-lived (mean 2.0 h
+vs 5.4 h globally). Ranking is the metric that matters. This is why M2 uses
+an HLA protein sequence instead of an allele name.
+
+```bash
+python scripts/train_m1.py
+```
+
+Predictions: `results/predictions/m1_*.parquet`, `m1pep_*.parquet`
+and `/results/` on volume `pmhc-data`.
 
 ## Owners
 
