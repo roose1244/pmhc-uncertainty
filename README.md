@@ -1,1 +1,200 @@
-# pmhc-uncertainty
+# pMHC Guardian
+
+Can a pMHC stability model know when it does not know?
+
+This branch (`Dev1`) locks the scientific contract for hours 0–1. It fills in
+the decisions from Developer 2's `PLAN.md` (created, then deleted on `main`).
+Do not change a locked item silently. Post in chat first.
+
+## Research question
+
+Can predictive uncertainty identify unreliable pMHC stability predictions
+under peptide and HLA distribution shift?
+
+## Hypotheses
+
+- **H1.** A model can predict experimental pMHC half-life from peptide and HLA
+  representations.
+- **H2.** Predicted uncertainty correlates with actual error, and a claimed
+  90% interval covers about 90% of observations on in-distribution data.
+- **H3.** Error and uncertainty both rise when the peptide is unseen or the
+  HLA allele is held out. This is a test, not an assumption.
+
+## What we predict
+
+**Experimental peptide–MHC class I complex half-life at 37°C**, in hours.
+
+We do **not** train on binding affinity (nM). Affinity and stability are
+related but not the same quantity. Stability is the better reported correlate
+of CD8 T-cell immunogenicity (Rasmussen et al., 2016).
+
+### Transform (locked)
+
+About 20% of the table is recorded as `0.00` hours. Those are values below
+the scintillation-proximity assay floor, not biological zeros. A raw `log`
+of 0 is undefined, so we train on:
+
+```
+log_half_life = log10(half_life + 0.1)
+```
+
+`0.1` is the resolution of the published table. Spearman rank is invariant
+to this monotone transform. For display and for MAE in hours:
+
+```
+half_life_hat = max(10 ** log_half_life_hat - 0.1, 0)
+```
+
+A 90% interval is converted at both endpoints, so it is asymmetric on the
+hour scale. That is correct.
+
+## Data we are using, and where it comes from
+
+**Primary table (Developer 1 owns this):** the published training set of
+NetMHCstabpan.
+
+| | |
+|---|---|
+| File | `Stability.txt` |
+| URL | https://services.healthtech.dtu.dk/suppl/immunology/NetMHCstabpan-1.0/Stability.txt |
+| Paper | Rasmussen et al., *J Immunol* 2016;197:1517–1524 |
+| Assay | Scintillation proximity assay, 37°C, half-life in hours |
+| Download | `python scripts/download_stability.py` → `data/raw/Stability.txt` |
+
+Inspected counts (do not re-estimate later):
+
+- 28,166 peptide–HLA rows
+- 75 HLA names, 5,633 unique peptides
+- every peptide is a **9-mer** (8–11-mer NetMHCstabpan outputs are
+  approximations; they stay out of training)
+- no duplicate peptide–HLA pairs
+- 5,679 exact zeros (20.2%); median 1.1 h; max 256.7 h
+- three names are engineered mutants, not IMGT alleles:
+  `HLA-B*14:01(C67S)`, `HLA-B*14:02(C67S)`, `HLA-B*39:06(C67S)`
+
+**Why this file, not IEDB first.** This is the largest public quantitative
+pMHC-I stability matrix. Most IEDB “stability” rows are the same
+Buus/Harndahl experiments. An IEDB export is not an independent test unless
+Developer 2 can prove sequence-level non-overlap.
+
+**What we will not treat as a fair baseline.** NetMHCstabpan was trained on
+this exact table. Its half-life and %rank on these rows are circular.
+Developer 2 may still fetch them into `data/external/netmhcstabpan_preds.parquet`
+as a reference. We will say so in the paper/demo.
+
+**HLA protein sequences (Developer 2 supplies).** Until they arrive,
+`hla_seq` is null. Embeddings wait. For later: mature HLA α1–α2,
+residues 1–182. The three `(C67S)` alleles are the parent sequence with
+cysteine 67 changed to serine.
+
+**Novelty and structure (Developer 2, later).**
+`data/features/novelty.parquet`, optional `data/features/structure.parquet`.
+The ensemble does not wait on these.
+
+## Locked splits
+
+A random 10% row split puts the **same peptide in train and test for ~94% of
+test rows**. A high score there mostly means “the model remembers the
+peptide.” That is why four splits exist.
+
+| File | Rule | What it tests |
+|---|---|---|
+| `data/splits/random.parquet` | row split | sanity only; report peptide leakage |
+| `data/splits/peptide.parquet` | no peptide in two folds | unseen sequences |
+| `data/splits/cluster.parquet` | Hamming ≤ 3 components stay together | unseen peptide families |
+| `data/splits/hla.parquet` | whole alleles held out | unseen MHC molecules |
+
+Every split has folds `train / val / test / calib`.
+
+- **calib** is ~10% of the remainder after test/val. It is never used to
+  train the stability model and never appears in test. It is reserved for
+  conformal intervals.
+- **HLA test allele (locked):** `HLA-B*15:02` (349 rows). Same peptides are
+  mostly also measured on `HLA-B*15:01`, but the half-lives disagree
+  (Spearman 0.20, median |Δ| 4.8 h). A model that ignores HLA cannot fake
+  this split.
+- **HLA val allele (locked):** `HLA-B*27:02`. Also fully removed from train.
+  Sibling `HLA-B*27:05` stays in train.
+- **`HLA-A*02:01` stays in train** so the demo allele is one the model has
+  seen.
+
+Hamming ≤ 4 collapses half the peptides into one blob. Do not use it.
+
+## Required ablation
+
+Every model report includes a **peptide-only** twin (same peptide features,
+no HLA). If it matches the full model, we have not learned a pMHC
+interaction.
+
+## Model ladder (do not skip rungs)
+
+1. **M1.** BLOSUM50 peptide + train-fitted HLA one-hot → MLP.
+   Unseen alleles become a zero vector (training-set mean on the HLA split).
+2. **M1-peptide.** BLOSUM50 only.
+3. **M2.** Frozen ESM-2 `esm2_t12_35M_UR50D`, mean-pool peptide and HLA
+   α1–α2, then the same MLP. Embed each unique string once. Never fine-tune
+   ESM in this hackathon unless everything else is finished.
+4. **M3.** Only if M2 is trained: peptide residues cross-attend HLA groove
+   residues, or a cheap product/difference fallback.
+
+Then a **5-member deep ensemble** of the best head (different seeds +
+bootstrap). `y_mean` / `y_std` are in log space. 90% intervals are
+split-conformal on `calib` using scores `|y - y_mean| / y_std`.
+
+## File contract
+
+All tables live under `data/`. Parquet. `id` is the only join key.
+Predict `log_half_life`. Convert back only for display and hour-scale MAE.
+Test folds are touched once, at the end of each experiment.
+
+| File | Owner | Columns |
+|---|---|---|
+| `data/processed/master.parquet` | Dev 1 | `id, peptide, hla, hla_seq, log_half_life, half_life, source, assay` |
+| `data/splits/{random,peptide,cluster,hla}.parquet` | Dev 1 | `id, fold` (`train` / `val` / `test` / `calib`) |
+| `data/features/esm_peptide.npy`, `esm_hla.npy` + `*_index.csv` | Dev 1 | one row per unique peptide / HLA |
+| `data/external/netmhcstabpan_preds.parquet` | Dev 2 | `id, nms_half_life, nms_rank` |
+| `data/features/novelty.parquet` | Dev 2 | `id, hla_novelty, peptide_novelty` |
+| `data/features/structure.parquet` | Dev 2 | `id, n_contacts, bsa, hbonds, ipTM, pep_plddt` |
+| `results/predictions/<model>_<split>.parquet` | Dev 1 | `id, y_true, y_mean, y_std, m0..m4, fold` |
+
+Also on the master table, documented extras: `censored` (true when
+`half_life == 0`), `allele_class` (`natural` / `engineered`).
+
+`id` format: `HLA-A*02:01|VTTEVAFGL` after `normalise_hla()`.
+
+Allele strings keep the `HLA-` prefix and any `(C67S)` suffix. Use
+`src.hla.normalise_hla` everywhere.
+
+## Modal contract
+
+- One shared workspace. Run `modal profile list` before every job.
+- Volume `pmhc-data` mirrors `data/{processed,splits,features,external}`
+  and `results/predictions` under `/vol/data/...` and `/vol/results/predictions`.
+- `modal_app/common.py` defines `app`, `image`, `vol`, `VOL`. Both
+  developers import it. Neither redefines it.
+- Git is source of truth for code. The volume is source of truth for large
+  arrays. After writing inside a Modal function, call `vol.commit()`.
+- Never commit `.modal.toml` or tokens.
+
+## Hours 0–1 checklist (this branch)
+
+- [x] Repo cloned, branch `Dev1` (not `main`)
+- [x] Question, hypotheses, target, data URL, splits locked in this README
+- [x] Shared file contract written
+- [x] `requirements.txt`, `.gitignore`, `modal_app/common.py`
+- [x] `normalise_hla()` and the log-half-life helpers
+- [ ] Both people: `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
+- [ ] Both people: `pip install modal && modal setup && modal profile list`
+- [ ] Volume `pmhc-data` visible to both (`modal volume list`)
+- [ ] GPU decision posted in chat (default: laptop / `esm2_t12_35M`; Modal A10G only for embedding/ensemble)
+
+## Owners
+
+- **Dev 1 (this branch):** data, splits, embeddings, models, uncertainty, metrics
+- **Dev 2:** HLA sequences, NetMHCstabpan reference, novelty, structure,
+  validation set, app, slides
+
+## Handoffs
+
+Tag `main` only when merging a finished handoff: `h1` … `h6`.
+Work stays on `Dev1` until then.
