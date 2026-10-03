@@ -46,9 +46,10 @@ with col2:
 if picked.startswith("Other"):
     hla = st.text_input(
         "Allele not in the training set",
-        value="HLA-B*15:02",
-        help="Any IMGT name, e.g. HLA-B*57:01. Used to show what the tool "
-             "says about an allele the model has never measured.",
+        value="HLA-C*07:02",  # genuinely outside the 75; B*15:02 is in them
+        help="Any IMGT name. The groove sequence is looked up in IPD-IMGT/HLA "
+             "and embedded on demand, so any of 46,406 alleles can be "
+             "scored, not just the 75 with training data.",
     ).strip()
     if not hla:
         st.warning("Enter an allele name.")
