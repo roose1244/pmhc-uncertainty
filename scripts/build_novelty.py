@@ -45,7 +45,8 @@ MASTER = Path("data/processed/master.parquet")
 FASTA = Path("data/raw/hla_prot.fasta")
 PSEUDO = Path("data/external/hla_pseudo.csv")
 SPLIT_DIR = Path("data/splits")
-OUT = Path("data/processed/novelty.parquet")
+OUT = Path("data/features/novelty.parquet")  # the file contract's path
+LONG_OUT = Path("data/processed/novelty_long.parquet")  # diagnostic, Dev 2 only
 
 SPLITS = ["random", "hla", "peptide", "cluster"]
 
@@ -84,32 +85,38 @@ def pseudo_sequences() -> dict[str, str]:
 
 def nearest(
     query: dict[str, str], pool: list[str], table: dict[str, str]
-) -> tuple[dict[str, float], dict[str, str]]:
-    """For each allele, 1 - identity to the closest allele in `pool`.
+) -> tuple[dict[str, float], dict[str, str], dict[str, float]]:
+    """For each allele: distance to the closest allele in `pool`, and to the top 3.
 
     Compared position-wise on equal-length strings, so an allele whose
     sequence is absent from `table` yields NaN rather than a silent 0.
     """
     dist: dict[str, float] = {}
     who: dict[str, str] = {}
+    top3: dict[str, float] = {}
     pool_seqs = [(p, table[p]) for p in pool if table.get(p)]
     for hla in query:
         mine = table.get(hla)
         if not mine or not pool_seqs:
-            dist[hla], who[hla] = np.nan, ""
+            dist[hla], who[hla], top3[hla] = np.nan, "", np.nan
             continue
-        best_d, best_p = 1.0, ""
+        scored = []
         for p, other in pool_seqs:
             if len(other) != len(mine):
                 continue
             mism = sum(1 for a, b in zip(mine, other) if a != b)
-            d = mism / len(mine)
-            if d < best_d:
-                best_d, best_p = d, p
-                if d == 0.0:
-                    break
-        dist[hla], who[hla] = best_d, best_p
-    return dist, who
+            scored.append((mism / len(mine), p))
+        if not scored:
+            dist[hla], who[hla], top3[hla] = np.nan, "", np.nan
+            continue
+        scored.sort()
+        dist[hla], who[hla] = scored[0]
+        # Mean over the three closest training alleles. A single nearest
+        # neighbour can be misleadingly reassuring when it is the only close
+        # relative in train; the top-3 mean reflects how well the allele is
+        # covered rather than whether one sibling happens to be present.
+        top3[hla] = float(np.mean([s for s, _ in scored[:3]]))
+    return dist, who, top3
 
 
 def peptide_novelty(
@@ -136,6 +143,45 @@ def peptide_novelty(
     return best, train_peps[arg]
 
 
+def to_contract_shape(long: pd.DataFrame, seq_version: str) -> pd.DataFrame:
+    """Pivot to the file contract: one row per id, novelty as named columns.
+
+    The contract in the project plan is `id, hla_novelty, peptide_novelty`,
+    with per-split variants (hla_novelty_hla, hla_novelty_random, ...). But
+    novelty is only defined relative to a training fold, so the per-split
+    columns are the real quantity and the bare ones are aliases.
+
+    The bare columns alias the split that actually holds that dimension out:
+    hla_novelty      <- the HLA split, where whole alleles are unseen
+    peptide_novelty  <- the peptide split, where whole peptides are unseen
+
+    Anywhere else the bare columns would be mostly zero and would read as
+    "nothing is novel" rather than "this split does not test that axis".
+    """
+    wide = long[["id"]].drop_duplicates().set_index("id")
+
+    for split in SPLITS:
+        s = long[long.split == split].set_index("id")
+        # hla_novelty is 1 - identity to the nearest training allele over the
+        # mature 182-mer; the _pseudo_ variant is the same over the 34
+        # peptide-contacting residues, which is the more biological distance.
+        wide[f"hla_novelty_{split}"] = s.hla_groove_dist
+        wide[f"hla_novelty_top3_{split}"] = s.hla_groove_top3
+        wide[f"hla_n_train_{split}"] = s.hla_n_train
+        wide[f"hla_novelty_pseudo_{split}"] = s.hla_pseudo_dist
+        wide[f"hla_seen_{split}"] = s.hla_in_train
+        # Hamming over 9 positions, scaled to [0, 1] so both novelty axes are
+        # comparable fractional-mismatch quantities.
+        wide[f"peptide_novelty_{split}"] = s.pep_min_hamming / 9.0
+        wide[f"peptide_seen_{split}"] = s.pep_in_train
+
+    wide["hla_novelty"] = wide["hla_novelty_hla"]
+    wide["peptide_novelty"] = wide["peptide_novelty_peptide"]
+    wide["seq_version"] = seq_version
+
+    return wide.reset_index()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seq", choices=["imgt", "dev1"], default="imgt")
@@ -157,8 +203,13 @@ def main() -> int:
         train_peps = np.array(sorted(train.peptide.unique()))
 
         alleles = {h: groove.get(h, "") for h in d.hla.unique()}
-        g_dist, g_nn = nearest(alleles, train_alleles, groove)
-        p_dist, p_nn = nearest(alleles, train_alleles, pseudo)
+        g_dist, g_nn, g_top3 = nearest(alleles, train_alleles, groove)
+        p_dist, p_nn, _ = nearest(alleles, train_alleles, pseudo)
+
+        # Training examples per allele: the plan flags this as a strong, cheap
+        # uncertainty predictor independent of sequence distance -- an allele
+        # can be close to train and still barely measured.
+        density = train.hla.value_counts().to_dict()
 
         uniq = np.array(sorted(d.peptide.unique()))
         ham, ham_nn = peptide_novelty(uniq, train_peps)
@@ -177,6 +228,8 @@ def main() -> int:
                 "hla_in_train": d.hla.isin(in_train_hla).to_numpy(),
                 "hla_groove_dist": d.hla.map(g_dist).to_numpy(),
                 "hla_groove_nn": d.hla.map(g_nn).to_numpy(),
+                "hla_groove_top3": d.hla.map(g_top3).to_numpy(),
+                "hla_n_train": d.hla.map(density).fillna(0).astype(int).to_numpy(),
                 "hla_pseudo_dist": d.hla.map(p_dist).to_numpy(),
                 "hla_pseudo_nn": d.hla.map(p_nn).to_numpy(),
                 "pep_in_train": d.peptide.isin(in_train_pep).to_numpy(),
@@ -195,10 +248,16 @@ def main() -> int:
             f"unseen peptide={100 * (~held.pep_in_train).mean():5.1f}%"
         )
 
-    novelty = pd.concat(frames, ignore_index=True)
+    long = pd.concat(frames, ignore_index=True)
+    LONG_OUT.parent.mkdir(parents=True, exist_ok=True)
+    long.to_parquet(LONG_OUT, index=False)
+    print(f"\nwrote {LONG_OUT}  rows={len(long)}  (diagnostic long form)")
+
+    wide = to_contract_shape(long, seq_version)
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    novelty.to_parquet(OUT, index=False)
-    print(f"\nwrote {OUT}  rows={len(novelty)}  seq_version={seq_version}")
+    wide.to_parquet(OUT, index=False)
+    print(f"wrote {OUT}  rows={len(wide)}  cols={len(wide.columns)}  "
+          f"seq_version={seq_version}")
     return 0
 
 
