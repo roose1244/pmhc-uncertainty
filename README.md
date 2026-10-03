@@ -183,10 +183,25 @@ Allele strings keep the `HLA-` prefix and any `(C67S)` suffix. Use
 - [x] Shared file contract written
 - [x] `requirements.txt`, `.gitignore`, `modal_app/common.py`
 - [x] `normalise_hla()` and the log-half-life helpers
-- [ ] Both people: `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
-- [ ] Both people: `pip install modal && modal setup && modal profile list`
-- [ ] Volume `pmhc-data` visible to both (`modal volume list`)
-- [ ] GPU decision posted in chat (default: laptop / `esm2_t12_35M`; Modal A10G only for embedding/ensemble)
+- [x] Both people: venv + `pip install -r requirements.txt`
+- [x] Both people: Modal workspace `sarah04menla`, volume `pmhc-data` visible
+
+## Hours 1–3: master table and splits
+
+```bash
+python scripts/build_tables.py
+modal volume put pmhc-data data/processed /data/processed
+modal volume put pmhc-data data/splits /data/splits
+```
+
+- [x] `data/processed/master.parquet` (28,166 rows)
+- [x] four splits with leakage asserts
+- [x] uploaded to `pmhc-data`
+- [ ] M1 baseline (next)
+
+Random-split peptide leakage is ~0.93 by construction. Peptide and cluster
+splits are 0.00. HLA test is only `HLA-B*15:02`; val is only `HLA-B*27:02`;
+`HLA-A*02:01`, `HLA-B*15:01`, and `HLA-B*27:05` stay in train.
 
 ## Owners
 

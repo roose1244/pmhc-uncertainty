@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import sys
 from collections import Counter
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.hla import normalise_hla
 from src.target import to_log
