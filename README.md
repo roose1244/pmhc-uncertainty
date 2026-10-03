@@ -314,6 +314,22 @@ python scripts/train_ensemble.py
 
 Predictions: `results/predictions/m1ens_*.parquet` with `m0`…`m4`, `lo`, `hi`.
 
+## Figures
+
+```bash
+python scripts/make_figures.py
+```
+
+| File | What it shows |
+|---|---|
+| `results/figures/fig1_pred_vs_measured` | Ensemble hours vs measured hours, unseen peptides and B*15:02 |
+| `results/figures/fig2_uncertainty_vs_error` | Ensemble std vs absolute log error |
+| `results/figures/fig3_shift_bars` | Prediction Spearman and error–uncertainty Spearman across the four splits |
+| `results/figures/fig4_selective_peptide` | MAE as the more certain predictions are kept, unseen peptides |
+| `results/tables/comparison.csv` | M1, peptide-only, M2, ensemble, and NetMHCstabpan |
+
+On the peptide-disjoint test the ensemble Spearman is 0.67. NetMHCstabpan on the same fold is 0.86, and that number is in-sample. On B*15:02 the row to quote together is M1 −0.21, peptide-only −0.04, M2 +0.04.
+
 ## Owners
 
 - **Dev 1 (this branch):** data, splits, embeddings, models, uncertainty, metrics

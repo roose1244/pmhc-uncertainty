@@ -22,8 +22,11 @@ results/predictions/*
 !results/predictions/.gitkeep
 results/figures/*
 !results/figures/.gitkeep
+!results/figures/*.png
+!results/figures/*.svg
 results/tables/*
 !results/tables/.gitkeep
+!results/tables/*.csv
 
 *.npy
 *.pt
