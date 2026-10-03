@@ -18,6 +18,16 @@ class HlaSeqTests(unittest.TestCase):
         self.assertEqual(len(groove), 182)
         self.assertTrue(groove.startswith("GSHSM"))
 
+    def test_three_digit_protein_is_not_the_two_digit_allele(self):
+        text = (
+            ">HLA:HLA00017 A*02:12 30 bp\n" + ("GSHSM" + "Q" * 177) + "\n"
+            ">HLA:HLA02937 A*02:120 30 bp\n" + ("GSHSM" + "L" * 177) + "\n"
+        )
+        lookup = parse_imgt_fasta(text)
+        self.assertEqual(lookup["HLA-A*02:12"][5], "Q")
+        self.assertEqual(lookup["HLA-A*02:120"][5], "L")
+        self.assertNotIn("HLA-A*02:12", [k for k in lookup if k.endswith("120")])
+
     def test_c67s(self):
         groove = "C" * 182
         mutated = apply_engineered("HLA-B*14:02(C67S)", groove)

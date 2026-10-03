@@ -22,8 +22,10 @@ FASTA_URLS = {
 SIGNAL = 24
 GROOVE = 182
 HLA_SEQ_PATH = Path("data/external/hla_seq.parquet")
+# Protein field is greedy so A*02:120 is not read as A*02:12.
+# Optional :exon:synonymous fields and one expression suffix (N/L/S/C/A/Q).
 HEADER = re.compile(
-    r"(?:HLA-)?([ABC])\*(\d{2}):(\d{2})",
+    r"\b([ABC])\*(\d{2,3}):(\d{2,3})(?::\d+)*([NLSCAQ])?\b",
     re.IGNORECASE,
 )
 
@@ -36,21 +38,27 @@ def _parent_allele(name: str) -> str:
     return name.split("(")[0]
 
 
-def _fasta_score(seq: str) -> tuple[int, int]:
-    """Prefer canonical preprotein, then mature groove, then usable fragments."""
+def _fasta_score(seq: str, expression: str) -> tuple[int, int, int]:
+    """Prefer expressed alleles, then a full preprotein, then a longer chain."""
+    expressed = 0 if expression.upper() == "N" else 1
     if seq.startswith(("MAV", "MLV", "MRV")) and len(seq) >= SIGNAL + GROOVE:
-        return (3, len(seq))
+        return (expressed, 3, len(seq))
     if seq.startswith("GSHSM") and len(seq) >= GROOVE:
-        return (2, len(seq))
+        return (expressed, 2, len(seq))
     if seq.startswith("SHSMR") and len(seq) >= GROOVE - 1:
-        return (1, len(seq))
-    return (0, len(seq))
+        return (expressed, 1, len(seq))
+    return (expressed, 0, len(seq))
 
 
 def parse_imgt_fasta(text: str) -> dict[str, str]:
-    """Map HLA-A*02:01 → longest protein sequence for that 2-field name."""
+    """Map HLA-A*02:12 → the best protein for that exact two-field name.
+
+    A*02:120 is a different allele and must not compete with A*02:12.
+    """
     best: dict[str, str] = {}
+    best_score: dict[str, tuple[int, int, int]] = {}
     current_name = None
+    current_expr = ""
     chunks: list[str] = []
 
     def flush() -> None:
@@ -59,20 +67,22 @@ def parse_imgt_fasta(text: str) -> dict[str, str]:
         seq = "".join(chunks)
         if len(seq) < GROOVE - 2:
             return
-        prev = best.get(current_name)
-        if prev is None or _fasta_score(seq) > _fasta_score(prev):
+        score = _fasta_score(seq, current_expr)
+        if current_name not in best or score > best_score[current_name]:
             best[current_name] = seq
+            best_score[current_name] = score
 
     for line in text.splitlines():
         if line.startswith(">"):
             flush()
             chunks = []
             match = HEADER.search(line)
-            current_name = (
-                f"HLA-{match.group(1).upper()}*{match.group(2)}:{match.group(3)}"
-                if match
-                else None
-            )
+            if match is None:
+                current_name, current_expr = None, ""
+            else:
+                locus, family, protein, suffix = match.groups()
+                current_name = f"HLA-{locus.upper()}*{family}:{protein}"
+                current_expr = suffix or ""
         else:
             chunks.append(line.strip())
     flush()
@@ -107,6 +117,8 @@ def fetch_locus(locus: str) -> str:
 
     dest = Path("data/raw") / f"IMGT_{locus}_prot.fasta"
     dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.exists():
+        return dest.read_text()
     curl = shutil.which("curl")
     if curl:
         subprocess.run(
@@ -147,7 +159,10 @@ def build_hla_table(alleles: list[str], fasta_by_locus: dict[str, str] | None = 
             {
                 "hla": allele,
                 "hla_seq": groove,
-                "hla_seq_source": "IPD-IMGT/HLA Latest protein FASTA, mature 1-182",
+                "hla_seq_source": (
+                    "IPD-IMGT/HLA github Latest @ 5b915f27 (2026-08-26), "
+                    "mature 182 from GSHSM; fetched 2026-10-03"
+                ),
                 "parent": parent,
                 "engineered": allele != parent,
             }
@@ -158,10 +173,11 @@ def build_hla_table(alleles: list[str], fasta_by_locus: dict[str, str] | None = 
 
 
 def attach_to_master(master: pd.DataFrame, hla_table: pd.DataFrame) -> pd.DataFrame:
+    columns = list(master.columns)
     out = master.drop(columns=["hla_seq"]).merge(
         hla_table[["hla", "hla_seq"]], on="hla", how="left"
     )
     if out["hla_seq"].isna().any():
         absent = sorted(out.loc[out["hla_seq"].isna(), "hla"].unique())
         raise ValueError(f"master rows missing hla_seq: {absent}")
-    return out
+    return out[columns]

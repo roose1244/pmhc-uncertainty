@@ -229,13 +229,23 @@ python scripts/train_m1.py
 
 ## HLA sequences and ESM-2 embeddings
 
-`hla_seq` is now filled from IPD-IMGT/HLA protein FASTA (`Latest`). Mature
-α1–α2 = 182 residues starting at the GSHSM motif. `(C67S)` alleles are the
-parent groove with position 67 set to Ser. Developer 2 should verify, not
-re-fetch unless they disagree.
+`hla_seq` is the mature α1–α2 groove, 182 residues from the GSHSM motif.
+Source: IPD-IMGT/HLA GitHub branch `Latest` at commit `5b915f27`
+(2026-08-26), files `A_prot.fasta` and `B_prot.fasta`, fetched 2026-10-03.
+Not a numbered IMGT release. `(C67S)` alleles are the parent groove with
+position 67 set to Ser. Partial IMGT entries that start `SHSMR` get a
+leading `G`.
+
+The first parse treated `A*02:120` as `A*02:12` (the protein field was not
+greedy) and then kept the longest protein. That made `A*02:50` identical to
+`A*02:03` and put `A*24:19` one residue from `A*24:02`. Those were not
+chosen proxies. Developer 2's three-way check matched IMGT and DTU
+`MHC_pseudo.dat`. The corrected grooves are applied. 1,125 master rows:
+`A*02:12` 372, `A*02:50` 375, `A*24:19` 378. The other 72 alleles were
+unchanged. HLA embeddings for those three alleles were replaced and M2 was
+retrained. M1 and the ensemble do not use `hla_seq`.
 
 `B*15:01` vs `B*15:02` differ at mature positions 63, 94, 95, 113, 156.
-`A*02:01` and `A*02:12` share an identical 182-mer in this extract.
 
 ```bash
 python scripts/fetch_hla_sequences.py
@@ -253,11 +263,14 @@ alone.
 
 | Model | Split | Spearman | vs M1 |
 |---|---|---:|---|
-| M2 | random | 0.634 | worse than M1 0.765 |
-| M2 | peptide | 0.543 | worse than M1 0.642 |
-| M2 | cluster | 0.529 | worse than M1 0.629 |
-| M2 | hla | 0.037 | near zero; M1 was −0.21 |
+| M2 | random | 0.646 | worse than M1 0.765 |
+| M2 | peptide | 0.538 | worse than M1 0.642 |
+| M2 | cluster | 0.500 | worse than M1 0.629 |
+| M2 | hla | 0.041 | near zero; M1 was −0.21 |
 | M2-peptide | hla | 0.056 | HLA mean-pool adds nothing here |
+
+These are the numbers after the three groove corrections. The conclusion is
+unchanged.
 
 Mean-pooling 182 HLA residues washes out five substitutions. That is why M3
 is residue-level, not another mean-pool. The uncertainty ensemble uses **M1**.
