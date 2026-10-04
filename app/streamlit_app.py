@@ -11,8 +11,35 @@ from pathlib import Path
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import pandas as pd
+
 from app.client import predict  # noqa: E402
 from app.reliability import alleles, assess, validate_peptide  # noqa: E402
+from src.target import make_id  # noqa: E402
+
+
+@st.cache_data
+def _table() -> pd.DataFrame:
+    master = pd.read_parquet("data/processed/master.parquet")
+    nms = pd.read_parquet("data/external/netmhcstabpan_preds.parquet")
+    split = pd.read_parquet("data/splits/peptide.parquet")
+    return master.merge(nms, on="id", how="left").merge(split[["id", "fold"]], on="id")
+
+
+def _reference(peptide: str, hla: str) -> dict | None:
+    try:
+        row_id = make_id(hla, peptide)
+    except ValueError:
+        return None
+    hit = _table().loc[_table()["id"] == row_id]
+    if hit.empty:
+        return None
+    row = hit.iloc[0]
+    return {
+        "half_life": float(row.half_life),
+        "nms_half_life": float(row.nms_half_life) if pd.notna(row.nms_half_life) else float("nan"),
+        "fold": str(row.fold),
+    }
 
 BADGE = {
     "green": ("#1a7f37", "Reliable", "The model has relevant training data for this query."),
@@ -25,8 +52,8 @@ st.set_page_config(page_title="pMHC Guardian", page_icon="🛡", layout="centere
 
 st.title("pMHC Guardian")
 st.caption(
-    "Predicted peptide–MHC class I complex stability, with a verdict on "
-    "whether that prediction should be trusted."
+    "Peptide–HLA stability for immunotherapy design. NetMHCstabpan was trained "
+    "on this public table. This screen says whether the number should be trusted."
 )
 
 allele_meta = alleles()
@@ -138,6 +165,27 @@ else:
         "That is expected, not a display bug."
     )
 st.progress(min(pred.half_life_hours / 24.0, 1.0))
+
+reference = _reference(peptide, hla)
+if reference is not None and reference["nms_half_life"] == reference["nms_half_life"]:
+    st.write(f"**NetMHCstabpan:** {reference['nms_half_life']:.2f} h")
+    st.caption(
+        "Trained on this same public table, including rows we held out. "
+        "Not an independent comparison."
+    )
+if reference is not None and reference["fold"] == "test":
+    reveal = f"reveal:{hla}|{peptide}"
+    if st.button("Show held-out measurement"):
+        st.session_state[reveal] = True
+    if st.session_state.get(reveal):
+        measured = reference["half_life"]
+        lo_raw, hi_raw = pred.interval_hours
+        inside = lo_raw <= measured <= hi_raw
+        st.write(f"**Measured half-life:** {measured:.1f} h")
+        st.caption(
+            "Held out of this model's training fold. "
+            + ("Inside the 90% interval." if inside else "Outside the 90% interval.")
+        )
 
 st.subheader("Why")
 for s in rel.signals:

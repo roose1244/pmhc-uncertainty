@@ -380,7 +380,7 @@ Click in this order.
 | Button | Query | What to say |
 |---|---|---|
 | Seen pair | `FVRQCFNPM` / `HLA-A*02:01` | 1.1 h, 90% interval 0.1–5.6 h. Both were in training. Not a generalisation test. |
-| Unseen peptide | `GLYGNGILV` / `HLA-A*02:01` | 10.3 h, 90% interval 5.0–21.2 h. Peptide held out; 3 of 9 positions differ from the nearest training peptide. Measured half-life is 20.1 h, inside the interval. |
+| Unseen peptide | `GLYGNGILV` / `HLA-A*02:01` | 10.3 h, 90% interval 5.0–21.2 h. NetMHCstabpan says 4.07 h and was trained on this file. Then show the held-out measurement, 20.1 h, inside the interval. |
 | Unseen HLA | `FVRQCFNPM` / `HLA-C*07:02` | 0.9 h and a narrow range, labelled uncalibrated. `C*07:02` is not in the table. The ensemble does not widen. |
 
 `HLA-B*15:02` is in the dropdown. This frozen model trained on it. Use Unseen HLA, not `B*15:02`, for the new-allele case.
