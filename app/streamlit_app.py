@@ -50,7 +50,10 @@ html, body, [class*="css"], .stApp, .stMarkdown, button, input, textarea {
   font-family: "IBM Plex Mono", ui-monospace, monospace !important;
 }
 .stApp { background: #f3eee6; color: #1c1410; }
-.block-container { max-width: 58rem; padding-top: 1.4rem; }
+/* Streamlit's header is fixed and opaque. Without the clearance below it the
+   section tabs sit underneath it and look missing. */
+header[data-testid="stHeader"] { background: transparent; }
+.block-container { max-width: 58rem; padding-top: 4.2rem; }
 .marquee { overflow: hidden; white-space: nowrap; border-top: 1px solid #ddd4c8; border-bottom: 1px solid #ddd4c8; margin: 0 0 1rem; }
 .marquee span { display: inline-block; padding-right: 2.5rem; letter-spacing: 0.18em; font-size: 0.68rem; color: #6a5e54; animation: ticker 28s linear infinite; }
 @keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
