@@ -344,6 +344,19 @@ outside the table, such as `C*07:02`, returns `allele_known: false` and the
 verdict says the interval is not calibrated. Weights are `models/member_*.pt`
 on volume `pmhc-data` under `/models/` (gitignored).
 
+Deployed endpoint, 9-mers only. `mean`, `std`, `lo`, and `hi` are
+`log10(half-life + 0.1)`. Hours are also returned.
+
+```bash
+curl -X POST https://sarah04menla--pmhc-guardian-guardian-predict.modal.run \
+  -H 'Content-Type: application/json' \
+  -d '{"peptide":"GILGFVFTL","hla":"A*02:01"}'
+```
+
+A cold container takes about 20 seconds. The first checked reply for that
+peptide was 1.92 h, interval 0–71 h, allele in training, peptide not,
+predicted error in the upper half of the calibration set.
+
 Novelty is `data/features/novelty.parquet`, built from the corrected grooves
 (`seq_version=master_corrected_imgt_5b915f27`). On the peptide test, a model
 fitted only on `calib` lifts error–uncertainty Spearman from 0.12 (`y_std`)
