@@ -131,10 +131,12 @@ st.caption(gloss)
 lo_h, hi_h = pred.interval_hours
 st.metric("Predicted half-life", f"{pred.half_life_hours:.1f} h")
 if pred.hla_in_training is False:
-    st.write(f"**Uncalibrated range:** {lo_h:.1f} – {hi_h:.1f} hours")
+    st.write("**No calibrated interval.**")
     st.caption(
-        "Not a 90% interval. This allele was outside training, and the "
-        "ensemble does not widen its spread to show that."
+        "This allele was outside training. The ensemble stays narrow there, "
+        "so a numeric range would look precise without being a 90% interval. "
+        "Scaling the width by HLA distance was tested on ten held-out alleles "
+        "and did not improve coverage."
     )
 else:
     st.write(f"**90% interval:** {lo_h:.1f} – {hi_h:.1f} hours")
