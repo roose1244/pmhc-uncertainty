@@ -1,7 +1,7 @@
 """The single call that talks to the model.
 
 Everything model-shaped lives behind predict(), so wiring Dev 1's endpoint in
-is one function body and no UI change. Until GUARDIAN_URL is set, predict()
+is one function body and no UI change. Until PEPSHIELD_URL is set, predict()
 returns a clearly-labelled placeholder: `source` says where each result came
 from, and the UI shows that, so a demo can never silently present a dummy
 number as a real one.
@@ -53,7 +53,7 @@ def to_hours(log_value: float) -> float:
 
 
 def endpoint() -> str:
-    return os.environ.get("GUARDIAN_URL", "").strip()
+    return os.environ.get("PEPSHIELD_URL", "").strip()
 
 
 def _cache() -> dict:

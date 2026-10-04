@@ -1,4 +1,4 @@
-"""Visual components for the Guardian UI.
+"""Visual components for the PepShield UI.
 
 Two things the previous layout got wrong, both worth stating because the fix
 is the design:

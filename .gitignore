@@ -34,3 +34,4 @@ results/tables/*
 # app runtime artefacts
 app/cache/demo_predictions.json
 models/
+data/external/structures/

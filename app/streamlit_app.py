@@ -1,4 +1,4 @@
-"""pMHC Guardian: predicted stability with an honest reliability verdict.
+"""PepShield: predicted stability with an honest reliability verdict.
 
 Run:  streamlit run app/streamlit_app.py
 
@@ -26,6 +26,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from app.client import predict  # noqa: E402
 from app.components import gauge, interval_bar, stat_block, verdict_card  # noqa: E402
 from app.reliability import alleles, assess, validate_peptide  # noqa: E402
+from app.structure import (  # noqa: E402
+    groove_for, locus_of, nearest_training_allele, viewer_html,
+)
 
 BADGE = {
     "green": ("#2da44e", "Well supported",
@@ -37,11 +40,11 @@ BADGE = {
     "grey": ("#8c959f", "", ""),
 }
 
-st.set_page_config(page_title="pMHC Guardian", page_icon="🛡", layout="centered")
+st.set_page_config(page_title="PepShield", page_icon="🛡", layout="centered")
 st.markdown("<style>div.block-container{padding-top:2.2rem}</style>",
             unsafe_allow_html=True)
 
-st.title("pMHC Guardian")
+st.title("PepShield")
 st.caption("Peptide–MHC class I stability, with an explicit account of how far "
            "the query sits from the training data.")
 
@@ -133,6 +136,47 @@ for reason in rel.reasons:
                 f"• {reason}</div>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------ notes ---
+# ------------------------------------------------------------- structure ---
+with st.expander("Where this allele sits on the binding groove", expanded=False):
+    import json as _json
+
+    import streamlit.components.v1 as _components
+
+    try:
+        contacts = [p + 1 for p in _json.loads(
+            Path("data/external/contact_positions.json").read_text())]
+    except Exception:
+        contacts = []
+
+    # Mark where this allele differs from its nearest TRAINING allele. That is
+    # the project's own novelty measure put on the structure: not "this allele
+    # is unusual" in the abstract, but which pockets differ from anything the
+    # model has measured.
+    nn_name, novel_pos = nearest_training_allele(hla, groove_for(hla))
+
+    html = viewer_html(hla, contacts, novel_pos)
+    if html is None:
+        st.caption("Structure unavailable — AlphaFold could not be reached.")
+    else:
+        _components.html(html, height=360)
+        legend = ("<span style='color:#bf8700'>amber</span> = the 34 "
+                  "peptide-contacting residues")
+        if novel_pos:
+            legend += (f" &nbsp;·&nbsp; <span style='color:#cf222e'>red</span> = "
+                       f"{len(novel_pos)} position(s) where {hla} differs from "
+                       f"{nn_name}, its closest allele in training")
+        st.markdown(f"<div style='font-size:0.78rem;color:#8c959f'>{legend}</div>",
+                    unsafe_allow_html=True)
+        st.markdown(
+            f"<div style='font-size:0.72rem;color:#8c959f;margin-top:0.5rem'>"
+            f"Backbone is AlphaFold's model of the HLA-{locus_of(hla)} heavy "
+            f"chain. AlphaFold has one structure per locus, not per allele, so "
+            f"the fold is the locus consensus — alleles differ at side chains, "
+            f"not fold. The peptide is not modelled: a 9-mer has no AlphaFold "
+            f"entry and the complex would need co-folding, so its footprint is "
+            f"shown as the contact residues instead.</div>",
+            unsafe_allow_html=True)
+
 with st.expander("What the verdict is based on, and what it is not"):
     st.markdown(
         """

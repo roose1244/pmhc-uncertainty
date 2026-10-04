@@ -1,4 +1,4 @@
-"""Can Guardian pick out which individual predictions are wrong?
+"""Can PepShield pick out which individual predictions are wrong?
 
 "This allele is unseen, so be careful" is a lookup, not a finding: a tool
 always knows its own training set, and the warning is available without any
