@@ -38,8 +38,6 @@ PAGES = (
     "03  HOW IT WORKS",
     "04  UNCERTAINTY",
     "05  MODEL COMPARISON",
-    "06  RESULTS",
-    "07  LIMITATIONS",
 )
 
 
@@ -597,77 +595,6 @@ def screen_comparison() -> None:
     )
 
 
-def screen_results() -> None:
-    _kicker("06  Results")
-    st.header("Three claims, and where each one stops")
-    frames = _metrics()
-    ens = frames.get("m1ens")
-    comp = frames.get("comparison")
-    pocket = frames.get("mpocket")
-    if ens is None or comp is None:
-        st.warning("Result tables are missing.")
-        return
-    peptide_ens = _row(ens, "peptide")
-    peptide_m1 = comp.loc[(comp.model == "m1") & (comp.split == "peptide")].iloc[0]
-    peptide_m2 = comp.loc[(comp.model == "m2") & (comp.split == "peptide")].iloc[0]
-    st.subheader("The model can rank unseen peptides")
-    st.write(
-        f"Allele-name model, peptide split: rank correlation **{peptide_m1.spearman:.2f}**. "
-        f"ESM-2 average on the same split: **{peptide_m2.spearman:.2f}**. "
-        f"The five-copy ensemble: **{peptide_ens.spearman:.2f}**."
-    )
-    if pocket is not None:
-        p = _row(pocket, "peptide")
-        h = _row(pocket, "hla")
-        st.subheader("Contact residues are what transfer to a new allele")
-        st.write(
-            f"Encoding the 34 peptide-contact residues, rank correlation **{p.spearman:.2f}** on unseen peptides "
-            f"and **{h.spearman:.2f}** on held-out B*15:02. "
-            "The allele-name model on that allele is negative. "
-            "This contact model has one network, so it has no disagreement and no 90% interval."
-        )
-    st.subheader("Disagreement is a weak warning, and only for a seen allele")
-    st.write(
-        f"On unseen peptides, keeping the most-agreed half moves mean absolute error from "
-        f"**{peptide_ens.mae_100:.2f} h** to **{peptide_ens.mae_50:.2f} h**. "
-        f"A random half of the same predictions sits at **{peptide_ens.random_mae_50:.2f} h**."
-    )
-    _note("There is no HLA-C accuracy on this page. The stability table has no HLA-C measurements, so no error against HLA-C was computed.")
-    _figure(
-        "fig1_pred_vs_measured",
-        "Predicted versus measured",
-        "Predicted half-life against the laboratory half-life for held-out rows.",
-        "This is accuracy. It is not the uncertainty test.",
-    )
-    _figure(
-        "fig4_selective_peptide",
-        "Keeping the predictions the copies agree on",
-        "Mean error as more of the disagreed-with predictions are set aside. This is the risk–coverage curve for the peptide split.",
-        "A useful disagreement score makes the remaining set more accurate than keeping a random subset.",
-    )
-    _figure(
-        "fig5_allele_novelty",
-        "Error and a new allele",
-        "Held-out alleles ordered by how different their groove is from alleles in training.",
-        "Error rises as the allele gets less familiar. The ensemble spread does not. That is why a new allele does not get a calibrated interval.",
-    )
-
-
-def screen_limits() -> None:
-    _kicker("07  Limitations")
-    st.header("What this does not show")
-    st.markdown(
-        """
-- **Model disagreement** is the spread of five copies. It is a proxy for predictive uncertainty. It is not a probability that the half-life is correct, and it is not biological motion.
-- **Calibrated interval** is that spread multiplied by a factor fit on held-out rows. It is a separate object from the disagreement number. Coverage near 90% is an average over a test fold.
-- **pLDDT** on the structure is AlphaFold’s confidence in coordinates. It is not the stability model’s uncertainty.
-- **NetMHCstabpan** is another predictor trained on this file. It is not the laboratory answer.
-- **HLA-C** can be queried. This table has no HLA-C half-lives, so there is no HLA-C accuracy and no calibrated interval.
-- The contact-residue model ranks a new allele better. It has one network, so it has no disagreement and no interval. The live card serves the five-copy model.
-"""
-    )
-
-
 def main() -> None:
     st.set_page_config(page_title="PepShield", page_icon="◻", layout="centered")
     _css()
@@ -704,8 +631,6 @@ def main() -> None:
         PAGES[2]: screen_how,
         PAGES[3]: screen_uncertainty,
         PAGES[4]: screen_comparison,
-        PAGES[5]: screen_results,
-        PAGES[6]: screen_limits,
     }[page]()
 
 
