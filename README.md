@@ -367,11 +367,52 @@ be computed inside the HLA test fold.
 
 On the peptide-disjoint test the ensemble Spearman is 0.67. NetMHCstabpan on the same fold is 0.86, and that number is in-sample. On B*15:02 the row to quote together is M1 −0.21, peptide-only −0.04, M2 +0.04.
 
+## Demo
+
+The app is already running against the deployed ensemble:
+
+```bash
+streamlit run app/streamlit_app.py
+```
+
+Click in this order.
+
+| Button | Query | What to say |
+|---|---|---|
+| Seen pair | `FVRQCFNPM` / `HLA-A*02:01` | 1.1 h, 90% interval 0.1–5.6 h. Both were in training. Not a generalisation test. |
+| Unseen peptide | `GLYGNGILV` / `HLA-A*02:01` | 10.3 h, 90% interval 5.0–21.2 h. Peptide held out; 3 of 9 positions differ from the nearest training peptide. Measured half-life is 20.1 h, inside the interval. |
+| Unseen HLA | `FVRQCFNPM` / `HLA-C*07:02` | 0.9 h and a narrow range, labelled uncalibrated. `C*07:02` is not in the table. The ensemble does not widen. |
+
+`HLA-B*15:02` is in the dropdown. This frozen model trained on it. Use Unseen HLA, not `B*15:02`, for the new-allele case.
+
+## How to reproduce
+
+Reported numbers are the files in `results/tables/`. Retraining on Apple MPS can move the last digits. Seeds are fixed: split seed 42, ensemble members 0–4, error-predictor seed 42.
+
+Versions used: Python 3.12, torch 2.14.1, fair-esm 2.0.0, pandas 3.0.6, pyarrow 25.0.1, numpy 2.5.3, scikit-learn 1.9.1, biopython 1.88, modal 1.6.0, streamlit 1.65.0. ESM-2 checkpoint `esm2_t12_35M_UR50D`. HLA sequences from IPD-IMGT/HLA GitHub `Latest` at `5b915f27` (2026-08-26).
+
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python scripts/download_stability.py
+python scripts/build_tables.py
+python scripts/fetch_hla_sequences.py
+python scripts/embed_features.py
+python scripts/train_m1.py
+python scripts/train_m2.py
+python scripts/train_ensemble.py
+python scripts/build_novelty.py --seq dev1
+python scripts/error_predictor.py
+python scripts/make_figures.py
+python scripts/freeze_ensemble.py
+```
+
+Large files are not in git. `Stability.txt` is downloaded. Embeddings, novelty, and `models/*.pt` are on the Modal volume `pmhc-data` (`/data/features/`, `/data/processed/novelty_long.parquet`, `/models/`). Pull them with `modal volume get`.
+
 ## Owners
 
-- **Dev 1 (this branch):** data, splits, embeddings, models, uncertainty, metrics
-- **Dev 2:** HLA sequences, NetMHCstabpan reference, novelty, structure,
-  validation set, app, slides
+- **Dev 1 (this branch):** data, splits, embeddings, models, uncertainty, metrics, frozen endpoint
+- **Dev 2:** HLA sequence check, NetMHCstabpan reference, novelty design, app shell, slides
 
 ## Handoffs
 
