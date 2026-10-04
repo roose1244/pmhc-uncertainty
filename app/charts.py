@@ -6,7 +6,7 @@ chart draws it, because the project's own finding is that single-run
 differences on the HLA split are not interpretable, and a bare bar would
 contradict that.
 
-Colour is consistent across every chart: teal for this system, violet for
+Colour is consistent across every chart: sage for this system, plum for
 NetMHCstabpan, and a muted grey for ablations that exist only as controls.
 """
 
@@ -15,14 +15,14 @@ from __future__ import annotations
 import altair as alt
 import pandas as pd
 
-from app.theme import ACCENT, FAINT, INK, MUTED, NEUTRAL, REFERENCE
+from app.theme import ACCENT, FAINT, INK, MUTED, NEUTRAL, REFERENCE, WARN
 
 AXIS = alt.Axis(labelColor=MUTED, titleColor=MUTED, tickColor=FAINT,
                 domainColor=FAINT, labelFontSize=11, titleFontSize=11,
                 grid=False)
 GRID = alt.Axis(labelColor=MUTED, titleColor=MUTED, tickColor=FAINT,
                 domainColor=FAINT, labelFontSize=11, titleFontSize=11,
-                grid=True, gridColor="rgba(15,23,42,0.06)")
+                grid=True, gridColor="rgba(28,25,23,0.06)")
 
 SPLIT_ORDER = ["random", "peptide", "cluster", "hla"]
 
@@ -196,7 +196,7 @@ def selective_curve(df: pd.DataFrame, split: str, height: int = 240):
     keep = ["pred_err", "y_std", "novelty", "random", "oracle"]
     long = long[long.signal.isin(keep)]
 
-    palette = {"pred_err": ACCENT, "y_std": REFERENCE, "novelty": "#f59e0b",
+    palette = {"pred_err": ACCENT, "y_std": REFERENCE, "novelty": WARN,
                "random": NEUTRAL, "oracle": INK}
     return (
         alt.Chart(long)
