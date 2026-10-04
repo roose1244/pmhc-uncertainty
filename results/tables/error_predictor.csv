@@ -1,0 +1,5 @@
+split,fitted_on,tested_on,model,err_unc_y_std,err_unc_hla_novelty,err_unc_peptide_novelty,err_unc_predicted,gain_over_y_std
+random,2253,2816,hist_gradient_boosting,0.1992,,0.0544,0.2131,0.0139
+peptide,2251,2813,hist_gradient_boosting,0.1219,,0.0423,0.211,0.089
+cluster,2250,2816,hist_gradient_boosting,0.1488,,0.0362,0.2272,0.0783
+hla,2621,349,hist_gradient_boosting,-0.0963,,0.0987,-0.0665,0.0298

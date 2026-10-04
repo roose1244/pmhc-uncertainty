@@ -234,6 +234,15 @@ def fig_selective() -> None:
     random_mae = np.mean(random_curves, axis=0)
     fig, ax = plt.subplots(figsize=(6.6, 4.4))
     ax.plot(fractions * 100, model_mae, color=TEAL, lw=2.2, label="Ranked by ensemble std")
+    err_path = PRED_DIR / "errpred_m1ens.parquet"
+    if err_path.exists():
+        pred = pd.read_parquet(err_path)
+        pred = pred.loc[pred["split"] == "peptide"]
+        if len(pred) == len(test):
+            aligned = test[["id"]].merge(pred, on="id", how="left")
+            order = np.argsort(aligned["pred_err"].to_numpy(), kind="mergesort")
+            pred_mae = [_prefix_mae(y, yhat, order, f) for f in fractions]
+            ax.plot(fractions * 100, pred_mae, color="#C47B2B", lw=2.2, label="Ranked by predicted error")
     ax.plot(fractions * 100, random_mae, color=GREY, lw=2.0, label="Random retention")
     ax.plot(fractions * 100, oracle_mae, color=NAVY, lw=1.6, ls="--", label="Oracle, ranked by true error")
     ax.set_xlim(100, 20)
@@ -244,6 +253,51 @@ def fig_selective() -> None:
     _save(fig, "fig4_selective_peptide")
 
 
+def fig_allele_novelty() -> None:
+    long = pd.read_parquet("data/processed/novelty_long.parquet")
+    ens = pd.read_parquet(PRED_DIR / "m1ens_hla.parquet")
+    merged = long.loc[long["split"] == "hla"].merge(ens[["id", "y_true", "y_mean", "y_std"]], on="id")
+    merged["abs_err"] = (merged["y_true"] - merged["y_mean"]).abs()
+    calib = merged.loc[merged["fold"] == "calib"]
+    grouped = calib.groupby("hla").agg(
+        n=("id", "size"),
+        err=("abs_err", "mean"),
+        ystd=("y_std", "mean"),
+        contacts=("hla_pseudo_dist", lambda s: float(s.iloc[0]) * 34),
+    )
+    fig, axes = plt.subplots(1, 2, figsize=(10.6, 4.8), sharex=True)
+    fig.subplots_adjust(wspace=0.32)
+    axes[0].scatter(grouped["contacts"], grouped["err"], s=grouped["n"] / 3, c=TEAL, zorder=3)
+    axes[1].scatter(grouped["contacts"], grouped["ystd"], s=grouped["n"] / 3, c=NAVY, zorder=3)
+    for i, (allele, row) in enumerate(grouped.sort_values(["contacts", "err"]).iterrows()):
+        label = allele.replace("HLA-", "")
+        axes[0].annotate(
+            label,
+            (row.contacts, row.err),
+            textcoords="offset points",
+            xytext=(5, 6 if i % 2 == 0 else -10),
+            fontsize=8,
+        )
+    rho_err = _spearman(grouped["contacts"], grouped["err"])
+    rho_std = _spearman(grouped["contacts"], grouped["ystd"])
+    axes[0].set_title(f"Mean absolute error\nSpearman {rho_err:.2f}")
+    axes[1].set_title(f"Mean ensemble std\nSpearman {rho_std:.2f}")
+    axes[0].set_ylabel("Mean |error|, log10(half-life + 0.1)")
+    axes[1].set_ylabel("Mean ensemble std")
+    for ax in axes:
+        ax.set_xlabel("Contact differences from nearest trained allele")
+    fig.suptitle("Ten held-out calibration alleles", color=NAVY, fontsize=14, y=1.02)
+    fig.text(
+        0.5,
+        -0.06,
+        "Point area is the number of measurements. Calibration fold, not the B*15:02 test.",
+        color=GREY,
+        fontsize=9,
+        ha="center",
+    )
+    _save(fig, "fig5_allele_novelty")
+
+
 def main() -> None:
     _style()
     table = comparison_table()
@@ -251,6 +305,8 @@ def main() -> None:
     fig_uncertainty()
     fig_shift_bars(table)
     fig_selective()
+    if Path("data/processed/novelty_long.parquet").exists():
+        fig_allele_novelty()
     show = table.loc[
         table["split"].isin(["peptide", "hla"])
         & table["model"].isin(["m1", "m1pep", "m2", "m1ens", "netmhcstabpan"])

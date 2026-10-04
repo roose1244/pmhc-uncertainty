@@ -325,8 +325,18 @@ python scripts/make_figures.py
 | `results/figures/fig1_pred_vs_measured` | Ensemble hours vs measured hours, unseen peptides and B*15:02 |
 | `results/figures/fig2_uncertainty_vs_error` | Ensemble std vs absolute log error |
 | `results/figures/fig3_shift_bars` | Prediction Spearman and error–uncertainty Spearman across the four splits |
-| `results/figures/fig4_selective_peptide` | MAE as the more certain predictions are kept, unseen peptides |
+| `results/figures/fig4_selective_peptide` | MAE as predictions are kept, unseen peptides. Includes the error predictor |
+| `results/figures/fig5_allele_novelty` | Ten calibration alleles: error rises with contact distance, ensemble std does not |
 | `results/tables/comparison.csv` | M1, peptide-only, M2, ensemble, and NetMHCstabpan |
+| `results/tables/error_predictor.csv` | Calib-only model of absolute error versus `y_std` |
+
+Novelty is `data/features/novelty.parquet`, built from the corrected grooves
+(`seq_version=master_corrected_imgt_5b915f27`). On the peptide test, a model
+fitted only on `calib` lifts error–uncertainty Spearman from 0.12 (`y_std`)
+to 0.21. On the ten held-out calibration alleles, mean error rises with
+groove distance (Spearman 0.55) while mean `y_std` does not (contact-distance
+Spearman −0.14). `B*15:02` itself is one allele, so that correlation cannot
+be computed inside the HLA test fold.
 
 On the peptide-disjoint test the ensemble Spearman is 0.67. NetMHCstabpan on the same fold is 0.86, and that number is in-sample. On B*15:02 the row to quote together is M1 −0.21, peptide-only −0.04, M2 +0.04.
 
