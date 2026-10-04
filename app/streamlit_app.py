@@ -43,15 +43,23 @@ def _show_seen() -> None:
     st.session_state.allele_pick = "HLA-A*02:01"
 
 
+def _show_unseen_peptide() -> None:
+    # Held out of the peptide-split training fold. Three substitutions from
+    # the nearest training peptide, so the badge is caution, not failure.
+    st.session_state.peptide = "GLYGNGILV"
+    st.session_state.allele_pick = "HLA-A*02:01"
+
+
 def _show_unseen() -> None:
     st.session_state.peptide = "FVRQCFNPM"
     st.session_state.allele_pick = OTHER
     st.session_state.custom_hla = "HLA-C*07:02"
 
 
-b1, b2 = st.columns(2)
-b1.button("Seen allele", on_click=_show_seen)
-b2.button("Unseen HLA", on_click=_show_unseen)
+b1, b2, b3 = st.columns(3)
+b1.button("Seen pair", on_click=_show_seen)
+b2.button("Unseen peptide", on_click=_show_unseen_peptide)
+b3.button("Unseen HLA", on_click=_show_unseen)
 
 col1, col2 = st.columns([3, 2])
 with col1:
