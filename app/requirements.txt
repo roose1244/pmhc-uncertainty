@@ -1,0 +1,4 @@
+# App-only dependencies. Kept separate from the project requirements.txt,
+# which is Dev 1's locked contract file and is consumed by the Modal image.
+streamlit>=1.65
+requests>=2.31

@@ -1,0 +1,25 @@
+model,split,n,spearman,mae_hours,err_unc_spearman,coverage_90,note
+m1,random,2816,0.764932837238356,3.535846471786499,,,BLOSUM50 + HLA one-hot. On the HLA split the one-hot is all zeros.
+m1,peptide,2813,0.6417472544890555,4.4480156898498535,,,BLOSUM50 + HLA one-hot. On the HLA split the one-hot is all zeros.
+m1,cluster,2816,0.6294512519678717,4.071352005004883,,,BLOSUM50 + HLA one-hot. On the HLA split the one-hot is all zeros.
+m1,hla,349,-0.20977974247243492,1.8014566898345947,,,BLOSUM50 + HLA one-hot. On the HLA split the one-hot is all zeros.
+m1pep,random,2816,0.4105788851117321,4.642641067504883,,,BLOSUM50 only. Trained without an HLA input.
+m1pep,peptide,2813,0.3271449840811503,5.040785789489746,,,BLOSUM50 only. Trained without an HLA input.
+m1pep,cluster,2816,0.29784332635625504,4.5903730392456055,,,BLOSUM50 only. Trained without an HLA input.
+m1pep,hla,349,-0.034964639099057344,1.6621344089508057,,,BLOSUM50 only. Trained without an HLA input.
+m2,random,2816,0.6458459121259702,4.230700492858887,,,Frozen ESM-2 mean-pools. Retrained after the three groove corrections.
+m2,peptide,2813,0.5383870776217369,4.796348571777344,,,Frozen ESM-2 mean-pools. Retrained after the three groove corrections.
+m2,cluster,2816,0.5004835551880336,4.377045154571533,,,Frozen ESM-2 mean-pools. Retrained after the three groove corrections.
+m2,hla,349,0.040840797308581527,1.4810694456100464,,,Frozen ESM-2 mean-pools. Retrained after the three groove corrections.
+m2pep,random,2816,0.3447527566770263,4.746465682983398,,,ESM-2 peptide mean-pool only.
+m2pep,peptide,2813,0.1702560124134409,5.221797943115234,,,ESM-2 peptide mean-pool only.
+m2pep,cluster,2816,0.19072774074886853,4.690910339355469,,,ESM-2 peptide mean-pool only.
+m2pep,hla,349,0.055774879275499144,1.507062554359436,,,ESM-2 peptide mean-pool only.
+m1ens,random,2816,0.76639863068122,3.4472577571868896,0.1991751386059392,0.9073153409090909,Five bootstrapped M1 members. y_std is their disagreement.
+m1ens,peptide,2813,0.6736509861726008,4.113041400909424,0.1219493167268743,0.9093494489868468,Five bootstrapped M1 members. y_std is their disagreement.
+m1ens,cluster,2816,0.6652843353134424,3.796473503112793,0.1488230618512398,0.9126420454545454,Five bootstrapped M1 members. y_std is their disagreement.
+m1ens,hla,349,-0.13986040196789287,1.7039754390716553,-0.09633915338687593,0.9054441260744985,Five bootstrapped M1 members. y_std is their disagreement.
+netmhcstabpan,random,2696,0.8802431534423439,3.571135014836795,,,"In-sample. NetMHCstabpan was trained on this file. Contaminated ceiling, not a fair baseline."
+netmhcstabpan,peptide,2720,0.8628285229490626,3.8989338235294118,,,"In-sample. NetMHCstabpan was trained on this file. Contaminated ceiling, not a fair baseline."
+netmhcstabpan,cluster,2720,0.84788693330808,3.566588235294118,,,"In-sample. NetMHCstabpan was trained on this file. Contaminated ceiling, not a fair baseline."
+netmhcstabpan,hla,349,0.8445708465804259,0.9467621776504298,,,"In-sample. NetMHCstabpan was trained on this file. Contaminated ceiling, not a fair baseline."

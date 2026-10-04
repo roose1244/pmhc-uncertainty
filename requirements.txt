@@ -1,0 +1,10 @@
+torch
+fair-esm
+pandas
+pyarrow
+numpy
+scikit-learn
+lightgbm
+matplotlib
+biopython
+modal
