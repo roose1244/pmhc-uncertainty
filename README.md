@@ -2,6 +2,8 @@
 
 Can a pMHC stability model know when it does not know?
 
+Live app: <https://sarah04menla--pepshield.modal.run/>
+
 This branch (`Dev1`) locks the scientific contract for hours 0–1. It fills in
 the decisions from Developer 2's `PLAN.md` (created, then deleted on `main`).
 Do not change a locked item silently. Post in chat first.
