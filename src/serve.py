@@ -8,6 +8,7 @@ spread does not warn about a new HLA.
 from __future__ import annotations
 
 import json
+import os
 import pickle
 from functools import lru_cache
 from pathlib import Path
@@ -20,7 +21,10 @@ from src.model import StabilityMLP
 from src.hla import normalise_hla
 from src.target import from_log
 
-MODELS = Path("models")
+def models_dir() -> Path:
+    return Path(os.environ.get("PMHC_MODELS", "models"))
+
+
 FEATURES = [
     "y_std",
     "hla_novelty_peptide",
@@ -37,20 +41,21 @@ def _mismatch(a: str, b: str) -> float:
 
 @lru_cache(maxsize=1)
 def _bundle() -> dict:
-    manifest = json.loads((MODELS / "manifest.json").read_text())
-    with open(MODELS / "encoder.pkl", "rb") as handle:
+    root = models_dir()
+    manifest = json.loads((root / "manifest.json").read_text())
+    with open(root / "encoder.pkl", "rb") as handle:
         encoder = pickle.load(handle)
-    with open(MODELS / "error_model.pkl", "rb") as handle:
+    with open(root / "error_model.pkl", "rb") as handle:
         error_model = pickle.load(handle)
     members = []
     for seed in range(manifest["n_members"]):
         model = StabilityMLP(n_in=manifest["n_in"])
-        state = torch_load(MODELS / f"member_{seed}.pt")
+        state = torch_load(root / f"member_{seed}.pt")
         model.load_state_dict(state)
         model.eval()
         members.append(model)
-    alleles = pd.read_parquet(MODELS / "allele_table.parquet")
-    peptides = pd.read_parquet(MODELS / "train_peptides.parquet")
+    alleles = pd.read_parquet(root / "allele_table.parquet")
+    peptides = pd.read_parquet(root / "train_peptides.parquet")
     return {
         "manifest": manifest,
         "encoder": encoder,
@@ -146,6 +151,8 @@ def predict(peptide: str, hla: str) -> dict:
         "peptide_seen": peptide_seen,
         "log_half_life": mean,
         "half_life_hours": from_log(mean),
+        "lo": lo,
+        "hi": hi,
         "lo_hours": from_log(lo),
         "hi_hours": from_log(hi),
         "y_std": std,
