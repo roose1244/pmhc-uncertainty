@@ -307,6 +307,14 @@ The interval excludes zero. The signal is small. It does not replace the
 ensemble: there is no `y_std` and no 90% interval for this head. The demo
 still serves the M1 ensemble.
 
+The same fit was also scored on the HLA-split calibration alleles. Those
+alleles were never in training and were not used to stop training. Eight have
+enough rows to rank. Pocket Spearman is positive on all eight (median 0.19).
+M1’s median on the same alleles is 0.06, and several are negative. `B*15:02`
+at 0.15 is typical of that set, not a picked winner. `B*27:02` was the
+early-stopping allele, so its 0.58 is not a holdout result. `A*69:01` (15
+rows) and `B*13:02` (7 rows) are too small to rank.
+
 ## M1 ensemble (locked)
 
 Five members, seeds 0–4, each trained on a bootstrap of the train fold.
