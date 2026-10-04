@@ -195,16 +195,9 @@ def landing() -> None:
   .stage {{ min-height: 88vh; display: flex; flex-direction: column; justify-content: flex-end; padding: 6vh 4vw 8vh; box-sizing: border-box; }}
   .rail {{ overflow: hidden; white-space: nowrap; font-size: 11px; letter-spacing: 0.22em; color: #6a5e54; margin-bottom: auto; }}
   .rail span {{ display: inline-block; padding-right: 3rem; }}
-  h1 {{ font-weight: 500; font-size: clamp(52px, 11vw, 112px); letter-spacing: 0.02em; line-height: 0.88; margin: 0; cursor: pointer; }}
+  h1 {{ font-weight: 500; font-size: clamp(52px, 11vw, 112px); letter-spacing: 0.02em; line-height: 0.88; margin: 0; }}
   h1 .ch {{ display: inline-block; }}
-  h1:hover {{ color: #3d5346; }}
   .sub {{ margin-top: 1.2rem; font-size: 12px; letter-spacing: 0.16em; color: #6a5e54; }}
-  button {{
-    margin-top: 2rem; background: transparent; color: #1c1410; border: none;
-    border-bottom: 1px solid #1c1410; font: inherit; letter-spacing: 0.2em;
-    padding: 0.35rem 0; cursor: pointer;
-  }}
-  button:hover {{ color: #3d5346; border-color: #3d5346; }}
 </style>
 </head>
 <body>
@@ -217,26 +210,22 @@ def landing() -> None:
     </div>
     <h1 id="title">{letters}</h1>
     <div class="sub" id="sub">UNCERTAINTY-AWARE PEPTIDE–HLA STABILITY PREDICTION</div>
-    <button id="go" type="button">PRESS TO ENTER</button>
   </div>
   <script>
-    const enter = () => {{
-      const top = window.parent || window;
-      top.location.href = top.location.pathname + "?enter=1";
-    }};
-    document.getElementById("title").addEventListener("click", enter);
-    document.getElementById("go").addEventListener("click", enter);
     gsap.set(".ch", {{ y: 110, opacity: 0 }});
     gsap.to(".ch", {{ y: 0, opacity: 1, duration: 0.9, stagger: 0.055, ease: "power4.out", delay: 0.12 }});
     gsap.from("#sub", {{ y: 18, opacity: 0, duration: 0.7, delay: 0.85, ease: "power3.out" }});
-    gsap.from("#go", {{ y: 14, opacity: 0, duration: 0.55, delay: 1.05, ease: "power3.out" }});
     gsap.to("#rail", {{ x: -420, duration: 22, repeat: -1, ease: "none" }});
   </script>
 </body>
 </html>
 """,
-        height=680,
+        height=560,
     )
+    # The button has to be a real Streamlit widget. A button inside the component
+    # iframe cannot navigate the page when the iframe is cross-origin, which is
+    # what happens once the app is served from Modal rather than localhost.
+    st.button("PRESS TO ENTER", key="press_enter", on_click=_enter, use_container_width=True)
 
 
 def _interval_bar(lo: float, hi: float) -> None:
