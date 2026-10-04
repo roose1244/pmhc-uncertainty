@@ -40,6 +40,7 @@ class Prediction:
     source: str  # "endpoint" | "cache" | "placeholder" | "endpoint-error"
     verdict: str = ""
     error: str = ""
+    hla_in_training: bool | None = None
 
     @property
     def half_life_hours(self) -> float:
@@ -123,10 +124,12 @@ def predict(peptide: str, hla: str, timeout: int = TIMEOUT) -> Prediction:
             d = r.json()
             if "mean" not in d:
                 return Prediction(0, 0, 0, 0, "endpoint-error", error=str(d.get("error", d)))
+            known = d.get("hla_in_training")
             return Prediction(
                 float(d["mean"]), float(d["std"]),
                 float(d["lo"]), float(d["hi"]), "endpoint",
                 verdict=str(d.get("verdict", "")),
+                hla_in_training=known if isinstance(known, bool) else None,
             )
         except Exception:
             pass  # fall through to local weights, cache, then placeholder

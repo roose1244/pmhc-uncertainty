@@ -31,25 +31,47 @@ st.caption(
 
 allele_meta = alleles()
 names = sorted(allele_meta)
+OTHER = "Other (type below)…"
+
+st.session_state.setdefault("peptide", "FVRQCFNPM")
+st.session_state.setdefault("allele_pick", "HLA-A*02:01")
+st.session_state.setdefault("custom_hla", "HLA-C*07:02")
+
+
+def _show_seen() -> None:
+    st.session_state.peptide = "FVRQCFNPM"
+    st.session_state.allele_pick = "HLA-A*02:01"
+
+
+def _show_unseen() -> None:
+    st.session_state.peptide = "FVRQCFNPM"
+    st.session_state.allele_pick = OTHER
+    st.session_state.custom_hla = "HLA-C*07:02"
+
+
+b1, b2 = st.columns(2)
+b1.button("Seen allele", on_click=_show_seen)
+b2.button("Unseen HLA", on_click=_show_unseen)
 
 col1, col2 = st.columns([3, 2])
 with col1:
-    peptide = st.text_input("Peptide", value="FVRQCFNPM", help="9 amino acids. Every training measurement is a 9-mer.").strip().upper()
+    peptide = st.text_input(
+        "Peptide",
+        key="peptide",
+        help="9 amino acids. Every training measurement is a 9-mer.",
+    ).strip().upper()
 with col2:
-    default = names.index("HLA-A*02:01") if "HLA-A*02:01" in names else 0
-    picked = st.selectbox("HLA allele", names + ["Other (type below)…"], index=default)
+    picked = st.selectbox("HLA allele", names + [OTHER], key="allele_pick")
 
 # The dropdown holds only the 75 alleles with training data, so without this
-# the reliability panel can never show a genuinely unseen allele -- which is
-# the single case the project exists to warn about. assess() already handles
-# an unknown allele; this makes that path reachable.
+# the reliability panel can never show a genuinely unseen allele.
 if picked.startswith("Other"):
     hla = st.text_input(
         "Allele not in the training set",
-        value="HLA-C*07:02",  # genuinely outside the 75; B*15:02 is in them
-        help="Any IMGT name. The groove sequence is looked up in IPD-IMGT/HLA "
-             "and embedded on demand, so any of 46,406 alleles can be "
-             "scored, not just the 75 with training data.",
+        key="custom_hla",
+        help="Any name outside the 75 stability-table alleles. "
+             "HLA-C*07:02 was never measured. B*15:02 is in the table, "
+             "so this frozen model has seen it.",
     ).strip()
     if not hla:
         st.warning("Enter an allele name.")
@@ -100,12 +122,19 @@ st.caption(gloss)
 
 lo_h, hi_h = pred.interval_hours
 st.metric("Predicted half-life", f"{pred.half_life_hours:.1f} h")
-st.write(f"**90% interval:** {lo_h:.1f} – {hi_h:.1f} hours")
+if pred.hla_in_training is False:
+    st.write(f"**Uncalibrated range:** {lo_h:.1f} – {hi_h:.1f} hours")
+    st.caption(
+        "Not a 90% interval. This allele was outside training, and the "
+        "ensemble does not widen its spread to show that."
+    )
+else:
+    st.write(f"**90% interval:** {lo_h:.1f} – {hi_h:.1f} hours")
+    st.caption(
+        "The interval is asymmetric in hours because the model works in log space. "
+        "That is expected, not a display bug."
+    )
 st.progress(min(pred.half_life_hours / 24.0, 1.0))
-st.caption(
-    "The interval is asymmetric in hours because the model works in log space. "
-    "That is expected, not a display bug."
-)
 
 st.subheader("Why")
 for s in rel.signals:
