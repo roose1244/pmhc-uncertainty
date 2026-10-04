@@ -41,6 +41,7 @@ class Prediction:
     verdict: str = ""
     error: str = ""
     hla_in_training: bool | None = None
+    member_hours: tuple[float, ...] = ()
 
     @property
     def half_life_hours(self) -> float:
@@ -93,6 +94,7 @@ def _local(peptide: str, hla: str) -> Prediction | None:
         from src.serve import predict as local_predict
 
         result = local_predict(peptide, hla)
+        hours = result.get("member_hours") or []
         return Prediction(
             float(result["log_half_life"]),
             float(result["y_std"]),
@@ -101,6 +103,7 @@ def _local(peptide: str, hla: str) -> Prediction | None:
             "local",
             verdict=str(result.get("verdict", "")),
             hla_in_training=bool(result.get("allele_known")),
+            member_hours=tuple(float(v) for v in hours),
         )
     except Exception:
         return None
@@ -125,11 +128,17 @@ def predict(peptide: str, hla: str, timeout: int = TIMEOUT) -> Prediction:
             if "mean" not in d:
                 return Prediction(0, 0, 0, 0, "endpoint-error", error=str(d.get("error", d)))
             known = d.get("hla_in_training")
+            hours = d.get("member_hours") or []
+            if not hours:
+                local = _local(peptide, hla)
+                if local is not None and local.member_hours:
+                    return local
             return Prediction(
                 float(d["mean"]), float(d["std"]),
                 float(d["lo"]), float(d["hi"]), "endpoint",
                 verdict=str(d.get("verdict", "")),
                 hla_in_training=known if isinstance(known, bool) else None,
+                member_hours=tuple(float(v) for v in hours),
             )
         except Exception:
             pass  # fall through to local weights, cache, then placeholder

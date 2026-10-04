@@ -315,6 +315,60 @@ at 0.15 is typical of that set, not a picked winner. `B*27:02` was the
 early-stopping allele, so its 0.58 is not a holdout result. `A*69:01` (15
 rows) and `B*13:02` (7 rows) are too small to rank.
 
+## Pocket ensemble (locked)
+
+Five members of the pocket model, seeds 0–4, bootstrap of the train fold,
+same split-conformal rule as the M1 ensemble. On the HLA split the quantile
+is fit on the other held-out alleles, then applied to `B*15:02`. It was not
+tuned on `B*15:02`.
+
+```bash
+python scripts/train_pseudo_ensemble.py
+```
+
+| Split | Spearman | err–unc Spearman | 90% coverage | MAE all → most certain 50% |
+|---|---:|---:|---:|---|
+| random | 0.793 | 0.115 | 0.875 | 3.57 h → 3.16 h |
+| peptide | 0.709 | 0.167 | 0.893 | 4.23 h → 3.49 h |
+| cluster | 0.689 | 0.153 | 0.907 | 3.80 h → 3.08 h |
+| hla (`B*15:02`) | 0.166 | −0.189 | 0.885 | 1.53 h → 1.46 h |
+
+The rank correlation survives the ensemble: 0.71 on unseen peptides, 0.17 on
+`B*15:02`. Where the allele was seen, higher spread goes with higher error.
+On `B*15:02` it goes the other way. Coverage is 89% because the interval is
+wide (median about 20 h, `q_norm` 8.4), and a constant-width interval scores
+better there. Across the calibration alleles the same global quantile covers
+72% of `B*46:01` and 98% of `A*26:01`. The contact residues carry the
+prediction onto a new allele. They do not yet carry a per-row warning.
+The demo still serves the M1 ensemble.
+
+## Heteroscedastic pocket model (locked)
+
+Same 860 inputs. The network has a second head and is trained with a Gaussian
+negative log-likelihood, so it outputs a mean and a variance. Early stopping
+uses validation negative log-likelihood. The 90% interval is still
+split-conformal on `calib`, using this predicted standard deviation in place
+of ensemble spread.
+
+```bash
+python scripts/train_hetero.py
+```
+
+| Split | Spearman | err–unc Spearman | 90% coverage | MAE all → most certain 50% | Median width |
+|---|---:|---:|---:|---|---:|
+| random | 0.754 | 0.319 | 0.904 | 3.71 h → 2.98 h | 8.7 h |
+| peptide | 0.658 | 0.261 | 0.907 | 4.43 h → 3.63 h | 12.1 h |
+| cluster | 0.643 | 0.261 | 0.910 | 3.94 h → 3.34 h | 12.8 h |
+| hla (`B*15:02`) | 0.149 | 0.012 | 0.845 | 1.51 h → 1.80 h | 20.3 h |
+
+Where the allele was seen, predicted variance tracks error more strongly than
+the pocket ensemble's spread (0.26 versus 0.17 on unseen peptides) and the
+intervals are narrower at the same coverage. The rank correlation is a little
+lower than the ensemble mean (0.66 versus 0.71). On `B*15:02` the variance
+does not rank the rows, coverage falls to 85%, and keeping the low-variance
+half raises the error. A learned variance fixes the warning for a new
+peptide. It does not fix it for a new allele.
+
 ## M1 ensemble (locked)
 
 Five members, seeds 0–4, each trained on a bootstrap of the train fold.
@@ -399,7 +453,10 @@ On the peptide-disjoint test the ensemble Spearman is 0.67. NetMHCstabpan on the
 
 ## Demo
 
-The app is already running against the deployed ensemble:
+Public page, no install: <https://sarah04menla--demo.modal.run>. Same weights
+as the endpoint, server-rendered on the `pmhc-guardian` app.
+
+The local app runs against the same deployed ensemble:
 
 ```bash
 streamlit run app/streamlit_app.py

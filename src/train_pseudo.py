@@ -104,6 +104,59 @@ def train_one(master: pd.DataFrame, split: pd.DataFrame, pseudo: dict[str, str])
     return out, metrics
 
 
+def ensemble_split(
+    master: pd.DataFrame, split: pd.DataFrame, pseudo: dict[str, str], name: str
+) -> tuple[pd.DataFrame, dict]:
+    """Five pocket members. Same bootstrap and conformal rule as the M1 ensemble."""
+    from src.ensemble import N_MEMBERS, _fit_member, _predict
+    from src.uncertainty import uncertainty_report
+
+    merged = master.merge(split, on="id")
+    train = merged.loc[merged["fold"] == "train"]
+    val = merged.loc[merged["fold"] == "val"]
+    x_train, y_train = _xy(train, pseudo)
+    x_val, y_val = _xy(val, pseudo)
+    x_all, y_all = _xy(merged, pseudo)
+    member_preds = []
+    for seed in range(N_MEMBERS):
+        model = _fit_member(x_train, y_train, x_val, y_val, seed)
+        member_preds.append(_predict(model, x_all))
+        print(f"  {name} member {seed} done", flush=True)
+    stacked = np.stack(member_preds, axis=1)
+    preds = pd.DataFrame(
+        {
+            "id": merged["id"].to_numpy(),
+            "y_true": y_all,
+            "fold": merged["fold"].to_numpy(),
+        }
+    )
+    for seed in range(N_MEMBERS):
+        preds[f"m{seed}"] = stacked[:, seed]
+    preds["y_mean"] = stacked.mean(axis=1)
+    preds["y_std"] = stacked.std(axis=1)
+    return uncertainty_report(preds, name)
+
+
+def run_ensemble(master: pd.DataFrame, splits: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    pseudo = load_pseudo()
+    rows = []
+    for name, split in splits.items():
+        scored, report = ensemble_split(master, split, pseudo, name)
+        PRED_DIR.mkdir(parents=True, exist_ok=True)
+        scored.to_parquet(PRED_DIR / f"mpocketens_{name}.parquet", index=False)
+        rows.append(report)
+        print(
+            f"mpocketens {name:8}  spearman={report['spearman']:.3f}  "
+            f"err-unc={report['err_unc_spearman_test']:.3f}  "
+            f"cover={report['coverage_90']:.3f}  "
+            f"MAE100={report['mae_100']:.2f}  MAE50={report['mae_50']:.2f}"
+        )
+    table = pd.DataFrame(rows)
+    TABLE_DIR.mkdir(parents=True, exist_ok=True)
+    table.to_csv(TABLE_DIR / "mpocketens.csv", index=False)
+    return table
+
+
 def run_all(master: pd.DataFrame, splits: dict[str, pd.DataFrame]) -> pd.DataFrame:
     pseudo = load_pseudo()
     rows = []

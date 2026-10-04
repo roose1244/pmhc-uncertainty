@@ -156,6 +156,7 @@ def predict(peptide: str, hla: str) -> dict:
         "lo_hours": from_log(lo),
         "hi_hours": from_log(hi),
         "y_std": std,
+        "member_hours": [from_log(value) for value in member_preds],
         "pred_err": pred_err,
         "verdict": _verdict(allele_known, pred_err, manifest["pred_err_median"], not peptide_seen),
     }

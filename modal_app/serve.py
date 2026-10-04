@@ -23,6 +23,7 @@ import os
 import modal
 
 from modal_app.common import VOL, app, image
+import modal_app.web  # noqa: F401  registers the public demo page on this app
 
 api_image = image.pip_install("fastapi[standard]").add_local_python_source("src", "modal_app")
 
@@ -62,6 +63,7 @@ class Guardian:
             "half_life_hours": result["half_life_hours"],
             "lo_hours": result["lo_hours"],
             "hi_hours": result["hi_hours"],
+            "member_hours": result.get("member_hours", []),
             "verdict": result["verdict"],
         }
 
