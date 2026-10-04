@@ -116,3 +116,45 @@ def stat_block(label: str, value: str, sub: str) -> str:
               margin-top:2px'>{value}</div>
   <div style='font-size:0.78rem;color:#8c959f;margin-top:2px'>{sub}</div>
 </div>"""
+
+
+def routing_diagram(selected: str | None, allele_known: bool) -> str:
+    """Compact pathway showing which model answered and why.
+
+    Routing is a decision the system makes from a fact it can check at query
+    time -- whether the allele was in training -- so the diagram shows that
+    fact as the branch point rather than presenting the model choice as
+    arbitrary.
+    """
+    on, off = "#0e7490", "#cbd5e1"
+    m1_c = on if selected == "m1" else off
+    m2_c = on if selected == "m2n" else off
+    branch = ("allele IS in training" if allele_known or selected == "m1"
+              else "allele is NOT in training")
+
+    def node(label, sub, colour, strong):
+        weight = "700" if strong else "500"
+        return (f"<div style='flex:1;text-align:center'>"
+                f"<div style='border:1.5px solid {colour};border-radius:8px;"
+                f"padding:0.4rem 0.3rem;background:{'#ecfeff' if strong else '#fff'}'>"
+                f"<div style='font-size:0.78rem;font-weight:{weight};color:"
+                f"{'#0f172a' if strong else '#94a3b8'}'>{label}</div>"
+                f"<div style='font-size:0.64rem;color:#94a3b8'>{sub}</div>"
+                f"</div></div>")
+
+    arrow = ("<div style='align-self:center;color:#cbd5e1;font-size:0.9rem;"
+             "padding:0 0.35rem'>&rarr;</div>")
+
+    return f"""
+<div style='display:flex;align-items:stretch;margin:0.3rem 0 0.2rem 0'>
+  {node("Query", "peptide + allele", "#cbd5e1", False)}
+  {arrow}
+  {node("Coverage check", branch, "#0e7490", True)}
+  {arrow}
+  <div style='flex:1.2;display:flex;flex-direction:column;gap:3px'>
+    {node("M1", "allele identity", m1_c, selected == "m1")}
+    {node("M2n", "allele sequence", m2_c, selected == "m2n")}
+  </div>
+  {arrow}
+  {node("Prediction", "+ support verdict", "#0e7490", True)}
+</div>"""
