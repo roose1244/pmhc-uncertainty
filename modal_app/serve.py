@@ -24,6 +24,7 @@ import modal
 
 from modal_app.common import VOL, app, image
 import modal_app.web  # noqa: F401  registers the public demo page on this app
+import modal_app.ui  # noqa: F401  registers the public Streamlit app on this app
 
 api_image = image.pip_install("fastapi[standard]").add_local_python_source("src", "modal_app")
 

@@ -453,8 +453,13 @@ On the peptide-disjoint test the ensemble Spearman is 0.67. NetMHCstabpan on the
 
 ## Demo
 
-Public page, no install: <https://sarah04menla--demo.modal.run>. Same weights
-as the endpoint, server-rendered on the `pmhc-guardian` app.
+Public app, no install: <https://sarah04menla--pepshield.modal.run>. This is
+`app/streamlit_app.py` itself, served from the `pmhc-guardian` app with the
+data and weights read off the `pmhc-data` volume. A cold container takes
+about a minute; open it before you present.
+
+<https://sarah04menla--demo.modal.run> is a plain server-rendered fallback
+page with the same numbers and no JavaScript.
 
 The local app runs against the same deployed ensemble:
 
