@@ -33,3 +33,5 @@ results/tables/*
 *.pth
 *.bin
 *.ckpt
+*.pkl
+models/*.parquet
