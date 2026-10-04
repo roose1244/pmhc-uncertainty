@@ -26,6 +26,7 @@ cites what it is based on.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -52,6 +53,9 @@ class Signal:
     level: str  # "green" | "amber" | "red"
     value: str
     detail: str
+    # How full the gauge reads, 0 to 1. Strength, not confidence: a full bar
+    # means "well covered by training data", never "this prediction is right".
+    fraction: float = 0.0
 
 
 @dataclass
@@ -125,7 +129,7 @@ def assess(peptide: str, hla: str, model_std: float | None = None) -> Reliabilit
     if meta is None:
         signals.append(
             Signal("HLA familiarity", "red", "not in training",
-                   "This allele was never seen during training.")
+                   "This allele was never seen during training.", 0.0)
         )
         reasons.append(
             "The model has no measurements for this allele. Its predictions "
@@ -135,10 +139,13 @@ def assess(peptide: str, hla: str, model_std: float | None = None) -> Reliabilit
     else:
         n = meta["n_rows"]
         level = "green" if n >= HLA_RICH else "amber" if n >= HLA_THIN else "red"
+        # Log scale: density runs 7 to 1070, so a linear bar would put every
+        # allele below ~200 rows in the same sliver.
+        frac = min(1.0, math.log10(max(n, 1)) / math.log10(1100))
         signals.append(
             Signal("HLA familiarity", level, f"{n} training examples",
                    f"Supertype {meta['supertype']} "
-                   f"({meta['supertype_confidence']}).")
+                   f"({meta['supertype_confidence']}).", frac)
         )
         if level != "green":
             reasons.append(
@@ -157,7 +164,7 @@ def assess(peptide: str, hla: str, model_std: float | None = None) -> Reliabilit
     if dist < 0:
         signals.append(
             Signal("Peptide familiarity", "red", "no comparable peptide",
-                   "Every training peptide is a 9-mer.")
+                   "Every training peptide is a 9-mer.", 0.0)
         )
         reasons.append(
             "All training data is 9-mers, so a peptide of another length is "
@@ -168,7 +175,8 @@ def assess(peptide: str, hla: str, model_std: float | None = None) -> Reliabilit
         word = "exact match in training" if dist == 0 else f"{dist} of {len(peptide)} differ"
         signals.append(
             Signal("Peptide familiarity", level, word,
-                   f"Closest training peptide: {nearest}" if nearest else "")
+                   f"Closest training peptide: {nearest}" if nearest else "",
+                   max(0.0, 1.0 - dist / max(len(peptide), 1)))
         )
         if dist >= PEP_FAR:
             reasons.append(
@@ -179,11 +187,15 @@ def assess(peptide: str, hla: str, model_std: float | None = None) -> Reliabilit
 
     # --- model agreement, secondary and explicitly weak ------------------
     if model_std is not None:
+        # Shown but never allowed to drive the badge. Measured against error
+        # it is close to useless (+0.05 within an allele) and inversely
+        # related to allele novelty (-0.46), so a full bar here means only
+        # "the members happened to agree".
+        agree = max(0.0, min(1.0, 1.0 - model_std / 0.6))
         signals.append(
             Signal("Model agreement", "grey", f"std {model_std:.3f}",
-                   "Weak signal: ensemble spread tracks error poorly "
-                   "(within-allele Spearman +0.05) and does not respond to "
-                   "an unfamiliar allele at all.")
+                   "Weak signal \u2014 never drives the badge.",
+                   agree)
         )
 
     ranked = {"green": 0, "amber": 1, "red": 2}
