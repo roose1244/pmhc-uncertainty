@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PepShield — pitch</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f3eee6;
+    --ink: #1c1410;
+    --muted: #6a5e54;
+    --olive: #3d5346;
+    --line: #ddd4c8;
+    --warn: #8c3b2e;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%;
+    background: var(--paper); color: var(--ink);
+    font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .deck { height: 100%; }
+  section {
+    display: none; height: 100vh; padding: 6vh 7vw 9vh;
+    flex-direction: column; justify-content: center;
+    animation: rise .35s ease;
+  }
+  section.on { display: flex; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .kicker { font-size: 11px; letter-spacing: .24em; color: var(--muted); margin-bottom: 1.6rem; }
+  h1 { font-size: clamp(40px, 7.5vw, 92px); font-weight: 600; letter-spacing: .04em; margin: 0; line-height: .98; }
+  h2 { font-size: clamp(24px, 3.4vw, 42px); font-weight: 500; margin: 0 0 1.6rem; line-height: 1.12; }
+  p  { font-size: clamp(14px, 1.45vw, 19px); line-height: 1.6; margin: 0 0 1rem; max-width: 56ch; }
+  .lede { font-size: clamp(16px, 1.7vw, 22px); color: var(--muted); letter-spacing: .02em; }
+  ul { margin: 0 0 1rem; padding-left: 1.1rem; }
+  li { font-size: clamp(14px, 1.45vw, 19px); line-height: 1.75; max-width: 62ch; }
+  b { font-weight: 600; }
+  .olive { color: var(--olive); }
+  .warn  { color: var(--warn); }
+  .muted { color: var(--muted); }
+
+  table { border-collapse: collapse; margin: .4rem 0 1rem; font-size: clamp(12px, 1.3vw, 17px); }
+  th, td { text-align: left; padding: .42rem 1.4rem .42rem 0; border-bottom: 1px solid var(--line); }
+  th { font-weight: 500; color: var(--muted); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+  td.num { font-variant-numeric: tabular-nums; }
+  tr.hero td { font-weight: 600; color: var(--olive); }
+
+  .cols { display: flex; gap: 3.5rem; flex-wrap: wrap; }
+  .pipe { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: 1rem 0 1.4rem; }
+  .pipe b { font-weight: 500; border: 1px solid var(--ink); padding: .3rem .5rem; font-size: clamp(10px, 1.05vw, 13px); letter-spacing: .06em; }
+  .pipe i { font-style: normal; color: var(--muted); }
+
+  .big { font-size: clamp(34px, 5vw, 64px); font-weight: 600; letter-spacing: .02em; line-height: 1; }
+  .stat { margin-right: 3.2rem; }
+  .stat .cap { font-size: 11px; letter-spacing: .16em; color: var(--muted); margin-top: .5rem; }
+  .row { display: flex; flex-wrap: wrap; margin: 1.2rem 0 1.4rem; }
+
+  .note { border-left: 2px solid var(--olive); padding-left: .9rem; color: var(--muted); font-size: clamp(12px, 1.25vw, 16px); max-width: 60ch; }
+  .bar { height: 8px; background: var(--line); margin: .3rem 0 .9rem; max-width: 34rem; }
+  .bar span { display: block; height: 8px; background: var(--olive); }
+  .bar.neg span { background: var(--warn); }
+
+  footer {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    display: flex; justify-content: space-between;
+    padding: .8rem 7vw; font-size: 10px; letter-spacing: .18em; color: var(--muted);
+    border-top: 1px solid var(--line); background: var(--paper);
+  }
+  a { color: var(--olive); }
+</style>
+</head>
+<body>
+<div class="deck">
+
+<!-- 1 -->
+<section class="on">
+  <div class="kicker">AI × SCIENCE HACKATHON · TRACK 3 · PEPTIDE–HLA STABILITY</div>
+  <h1>PEPSHIELD</h1>
+  <p class="lede" style="margin-top:1.4rem">Can the model know when it is wrong?</p>
+  <p class="muted" style="margin-top:2.2rem">Live: <a href="https://sarah04menla--pepshield.modal.run">sarah04menla--pepshield.modal.run</a></p>
+</section>
+
+<!-- 2 -->
+<section>
+  <div class="kicker">01 · THE PROBLEM</div>
+  <h2>A stability number with no error bar is not usable</h2>
+  <p>Peptide–HLA complex half-life decides whether a T cell ever sees an epitope, so it drives
+     neoantigen and vaccine shortlists. Measuring it is slow; models are fast.</p>
+  <p>But a model that returns <b>10.3 h</b> and a model that returns <b>10.3 h, and I have never
+     seen anything like this</b> lead to completely different experiments. Existing predictors
+     only give you the first.</p>
+  <div class="note">So we did not ask "can we predict half-life". We asked whether the model can
+     flag its own unreliable predictions — and we report where that fails.</div>
+</section>
+
+<!-- 3 -->
+<section>
+  <div class="kicker">02 · DATA</div>
+  <h2>One real measured dataset, four deliberate splits</h2>
+  <div class="row">
+    <div class="stat"><div class="big">28,166</div><div class="cap">MEASURED HALF-LIVES</div></div>
+    <div class="stat"><div class="big">5,633</div><div class="cap">UNIQUE 9-MERS</div></div>
+    <div class="stat"><div class="big">75</div><div class="cap">HLA ALLELES (36 A · 39 B)</div></div>
+    <div class="stat"><div class="big warn">0</div><div class="cap">HLA-C ALLELES</div></div>
+  </div>
+  <p>Rasmussen et al., <i>J Immunol</i> 2016, scintillation proximity assay at 37 °C.
+     We regress <b>log10(half-life + 0.1)</b>; 20% of values sit on the assay floor.</p>
+  <p>Four splits, locked before any modelling: <b>random</b>, <b>peptide-disjoint</b>,
+     <b>cluster</b> (Hamming ≤ 3), and <b>allele-disjoint</b>. The last one is the hard one.</p>
+</section>
+
+<!-- 4 -->
+<section>
+  <div class="kicker">03 · APPROACH</div>
+  <h2>Same network, three ways of describing the allele</h2>
+  <div class="pipe">
+    <b>PEPTIDE + HLA</b><i>→</i><b>FEATURES</b><i>→</i><b>5 BOOTSTRAP COPIES</b><i>→</i><b>PREDICTION + DISAGREEMENT</b><i>→</i><b>CONFORMAL INTERVAL</b>
+  </div>
+  <ul>
+    <li><b>M1</b> — BLOSUM50 peptide + a one-hot allele label. The label is useless for an allele it never saw.</li>
+    <li><b>M2</b> — frozen ESM-2 embeddings of peptide and groove.</li>
+    <li><b>Pocket</b> — BLOSUM50 of the <b>34 groove residues that actually contact the peptide</b>. A new allele is a new vector, not an unknown word.</li>
+  </ul>
+  <div class="note">Uncertainty = spread of five bootstrapped copies, converted to a 90% interval by
+     split conformal calibration fitted on held-out alleles. Nothing is tuned on test.</div>
+</section>
+
+<!-- 5 -->
+<section>
+  <div class="kicker">04 · RESULT 1</div>
+  <h2>It predicts unseen peptides, and contact residues win</h2>
+  <table>
+    <tr><th>Model</th><th>Unseen peptide</th><th>Unseen allele</th></tr>
+    <tr><td>M1 — one-hot allele</td><td class="num">0.642</td><td class="num warn">−0.210</td></tr>
+    <tr><td>M2 — frozen ESM-2</td><td class="num">0.538</td><td class="num">0.041</td></tr>
+    <tr class="hero"><td>Pocket — 34 contact residues</td><td class="num">0.713</td><td class="num">0.154</td></tr>
+    <tr><td>Pocket, 5-copy ensemble</td><td class="num">0.709</td><td class="num">0.166</td></tr>
+  </table>
+  <p class="muted">Spearman rank correlation. Unseen allele = B*15:02, 349 measurements, never in training.</p>
+  <div class="note">The one-hot model is <b>worse than random</b> on a new allele. Describing the
+     pocket chemistry instead of naming the allele is what makes transfer possible at all.</div>
+</section>
+
+<!-- 6 -->
+<section>
+  <div class="kicker">05 · RESULT 2</div>
+  <h2>The uncertainty is real where the allele is known</h2>
+  <p>On unseen peptides, throwing away the half the copies most disagree about drops
+     mean error from <b>4.23 h</b> to <b>3.49 h</b>. Discarding a random half gives <b>3.90 h</b>,
+     so the ranking is doing work, not the smaller sample.</p>
+  <table>
+    <tr><th></th><th>Coverage of 90% interval</th><th>Error–uncertainty</th></tr>
+    <tr><td>Random split</td><td class="num">88%</td><td class="num">0.115</td></tr>
+    <tr class="hero"><td>Unseen peptide</td><td class="num">89%</td><td class="num">0.167</td></tr>
+    <tr><td>Cluster split</td><td class="num">91%</td><td class="num">0.153</td></tr>
+  </table>
+  <div class="note">A claimed 90% interval that covers 89% is calibrated. This is the part most
+     demos skip, and it is the only reason the number on screen means anything.</div>
+</section>
+
+<!-- 7 -->
+<section>
+  <div class="kicker">06 · THE HONEST BIT</div>
+  <h2 class="warn">On a genuinely new allele, it stops working</h2>
+  <p>Ranking collapses from <b>0.71</b> to <b>0.17</b>. Worse, the ensemble's own disagreement
+     stops tracking the error — it even points the wrong way.</p>
+  <table>
+    <tr><th>Error–uncertainty correlation</th><th>Unseen peptide</th><th>Unseen allele</th></tr>
+    <tr><td>M1 ensemble</td><td class="num">0.122</td><td class="num warn">−0.096</td></tr>
+    <tr><td>Pocket ensemble</td><td class="num">0.167</td><td class="num warn">−0.189</td></tr>
+  </table>
+  <p>Per-allele coverage of the 90% interval runs from <b>72%</b> to <b>98%</b> across the ten
+     held-out calibration alleles. The guarantee is marginal, not per-allele.</p>
+  <div class="note">We could have shown only the peptide split and claimed calibrated uncertainty.
+     The app instead refuses to print an interval for an allele it never saw.</div>
+</section>
+
+<!-- 8 -->
+<section>
+  <div class="kicker">07 · IMPROVING THE WARNING</div>
+  <h2>A learned variance head sharpens it — where it already worked</h2>
+  <table>
+    <tr><th>Unseen peptide</th><th>Ranking</th><th>Error–uncertainty</th><th>Interval width</th></tr>
+    <tr><td>Bootstrap ensemble</td><td class="num">0.709</td><td class="num">0.167</td><td class="num">18.0 h</td></tr>
+    <tr class="hero"><td>Heteroscedastic head</td><td class="num">0.658</td><td class="num">0.261</td><td class="num">12.1 h</td></tr>
+  </table>
+  <p>Predicting the variance directly makes the warning <b>56% stronger</b> and the interval
+     <b>a third narrower</b>, for a small cost in ranking.</p>
+  <p class="warn">On a new allele it is still flat: error–uncertainty 0.012, coverage 85%.
+     Two independent methods fail the same way, which says the problem is the data, not the head.</p>
+</section>
+
+<!-- 9 -->
+<section>
+  <div class="kicker">08 · THE BASELINE QUESTION</div>
+  <h2>NetMHCstabpan scores 0.86 — on data it was trained on</h2>
+  <p>NetMHCstabpan reaches <b>0.863</b> on our peptide split and <b>0.845</b> on the held-out allele.
+     Both numbers are <b>in-sample</b>: this exact dataset is its training data.</p>
+  <div class="note">So we do not claim to beat it, and we do not quietly drop it. We show it on
+     every prediction, labelled as a contaminated ceiling rather than a fair baseline.
+     Being able to say which comparisons are meaningless is part of the result.</div>
+</section>
+
+<!-- 10 -->
+<section>
+  <div class="kicker">09 · THE PRODUCT</div>
+  <h2>Every prediction ships with its own caveat</h2>
+  <ul>
+    <li><b>Prediction</b> — half-life in hours, from five bootstrapped copies.</li>
+    <li><b>Disagreement</b> — how far those copies spread. Not a probability.</li>
+    <li><b>Calibrated interval</b> — only when the allele was in training. Otherwise withheld.</li>
+    <li><b>Structure</b> — AlphaFold groove with the 34 contact residues, labelled as a reference
+        protein with no peptide in it. It explains the features; it does not justify the uncertainty.</li>
+  </ul>
+  <p class="muted">Live now: <a href="https://sarah04menla--pepshield.modal.run">sarah04menla--pepshield.modal.run</a></p>
+</section>
+
+<!-- 11 -->
+<section>
+  <div class="kicker">10 · WHAT WE DO NOT CLAIM</div>
+  <h2>And what we would do next</h2>
+  <ul>
+    <li>No HLA-C result. The dataset has <b>zero</b> HLA-C measurements, so there is no HLA-C accuracy to report and we report none.</li>
+    <li>Disagreement is a proxy for predictive uncertainty, not a probability and not biology.</li>
+    <li>pLDDT is AlphaFold's confidence in coordinates, not our model's confidence.</li>
+  </ul>
+  <p><b>Next:</b> conditional conformal per allele group, so the 90% holds per allele rather than on
+     average; and measured half-lives for a handful of unseen alleles, which is the only thing that
+     turns the new-allele failure into a solved problem.</p>
+</section>
+
+</div>
+
+<footer>
+  <span id="where">01 / 11</span>
+  <span>PEPSHIELD · ← → TO NAVIGATE</span>
+</footer>
+
+<script>
+  const slides = [...document.querySelectorAll('section')];
+  let i = 0;
+  const show = n => {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach((s, k) => s.classList.toggle('on', k === i));
+    document.getElementById('where').textContent =
+      String(i + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
+    location.hash = i + 1;
+  };
+  addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(slides.length - 1);
+    if (e.key === 'f') document.documentElement.requestFullscreen?.();
+  });
+  addEventListener('click', e => { if (!e.target.closest('a')) show(i + 1); });
+  addEventListener('hashchange', () => show(parseInt(location.hash.slice(1) || '1', 10) - 1));
+  show(parseInt(location.hash.slice(1) || '1', 10) - 1);
+</script>
+</body>
+</html>
