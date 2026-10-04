@@ -281,9 +281,31 @@ alone.
 These are the numbers after the three groove corrections. The conclusion is
 unchanged.
 
-Mean-pooling 182 HLA residues washes out five substitutions. That is why M3
-is residue-level, not another mean-pool. The uncertainty ensemble uses **M1**.
-Do not retune M2 on the HLA test set.
+Mean-pooling 182 HLA residues washes out five substitutions. The uncertainty
+ensemble stays on **M1**. Do not retune M2 on the HLA test set.
+
+## Pocket model (34 contact residues)
+
+BLOSUM50 of the peptide plus BLOSUM50 of the 34 NetMHCpan contact residues
+(`pseudo_best` in `data/external/hla_pseudo.csv`). Same MLP as M1. A held-out
+allele still has a sequence. `B*15:01` and `B*15:02` differ at 3 of those 34
+positions.
+
+```bash
+python scripts/train_pseudo.py
+```
+
+| Split | Pocket Spearman | M1 | M2 |
+|---|---:|---:|---:|
+| random | 0.784 | 0.765 | 0.646 |
+| peptide | 0.713 [0.689, 0.733] | 0.642 | 0.538 |
+| cluster | 0.683 | 0.629 | 0.500 |
+| hla (`B*15:02`) | 0.154 [0.047, 0.247] | −0.210 | 0.041 |
+
+This is the first model whose rank correlation on `B*15:02` is above chance.
+The interval excludes zero. The signal is small. It does not replace the
+ensemble: there is no `y_std` and no 90% interval for this head. The demo
+still serves the M1 ensemble.
 
 ## M1 ensemble (locked)
 

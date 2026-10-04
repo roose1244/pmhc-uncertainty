@@ -35,6 +35,19 @@ def encode_peptides(peptides: list[str] | np.ndarray) -> np.ndarray:
     return np.stack([blosum_peptide(str(p)) for p in peptides], axis=0)
 
 
+def blosum_chain(sequence: str) -> np.ndarray:
+    """BLOSUM50 for each residue. Used for the 34-long HLA contact string."""
+    try:
+        rows = [_BLOSUM[residue] for residue in sequence]
+    except KeyError as exc:
+        raise ValueError(f"nonstandard residue in {sequence!r}") from exc
+    return np.concatenate(rows, dtype=np.float32)
+
+
+def encode_chains(sequences: list[str] | np.ndarray) -> np.ndarray:
+    return np.stack([blosum_chain(str(seq)) for seq in sequences], axis=0)
+
+
 def fit_hla_encoder(train_alleles: list[str] | np.ndarray) -> OneHotEncoder:
     """Unknown alleles become a zero vector. Fit on train only."""
     encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False, dtype=np.float32)
