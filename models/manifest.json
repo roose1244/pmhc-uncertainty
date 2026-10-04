@@ -1,0 +1,11 @@
+{
+  "split": "peptide",
+  "n_members": 5,
+  "n_in": 255,
+  "q_norm": 5.03004619990242,
+  "q_const": 0.9857237692922354,
+  "sigma_floor": 0.061618331745266916,
+  "known_allele_count": 75,
+  "note": "Trained on the peptide split. Every stability-table allele is known. B*15:02 was held out only in the separate HLA-split experiment.",
+  "pred_err_median": 0.46578413984614864
+}

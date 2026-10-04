@@ -74,7 +74,9 @@ def _predict(model: StabilityMLP, x: np.ndarray) -> np.ndarray:
         return model(torch.from_numpy(x).to(device)).cpu().numpy()
 
 
-def ensemble_split(master: pd.DataFrame, split: pd.DataFrame, name: str) -> tuple[pd.DataFrame, dict]:
+def train_members(
+    master: pd.DataFrame, split: pd.DataFrame, name: str
+) -> tuple[list[StabilityMLP], object, pd.DataFrame, dict]:
     merged = master.merge(split, on="id")
     train = merged.loc[merged["fold"] == "train"]
     val = merged.loc[merged["fold"] == "val"]
@@ -90,16 +92,23 @@ def ensemble_split(master: pd.DataFrame, split: pd.DataFrame, name: str) -> tupl
     x_train, y_train = pack(train)
     x_val, y_val = pack(val)
     x_all, y_all = pack(merged)
-    members = []
+    models = []
+    member_preds = []
     for seed in range(N_MEMBERS):
         model = _fit_member(x_train, y_train, x_val, y_val, seed)
-        members.append(_predict(model, x_all))
+        models.append(model.cpu())
+        member_preds.append(_predict(model, x_all))
         print(f"  {name} member {seed} done", flush=True)
-    stacked = np.stack(members, axis=1)
+    stacked = np.stack(member_preds, axis=1)
     preds = pd.DataFrame({"id": merged["id"].to_numpy(), "y_true": y_all, "fold": merged["fold"].to_numpy()})
     for seed in range(N_MEMBERS):
         preds[f"m{seed}"] = stacked[:, seed]
     preds["y_mean"] = stacked.mean(axis=1)
     preds["y_std"] = stacked.std(axis=1)
     scored, report = uncertainty_report(preds, name)
+    return models, encoder, scored, report
+
+
+def ensemble_split(master: pd.DataFrame, split: pd.DataFrame, name: str) -> tuple[pd.DataFrame, dict]:
+    _models, _encoder, scored, report = train_members(master, split, name)
     return scored, report

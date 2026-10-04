@@ -330,6 +330,20 @@ python scripts/make_figures.py
 | `results/tables/comparison.csv` | M1, peptide-only, M2, ensemble, and NetMHCstabpan |
 | `results/tables/error_predictor.csv` | Calib-only model of absolute error versus `y_std` |
 
+## Frozen demo model
+
+```bash
+python scripts/freeze_ensemble.py
+python scripts/predict_one.py GILGFVFTL A*02:01
+```
+
+The frozen ensemble is the peptide-split fit (test Spearman 0.67, the same
+number as `m1ens`). All 75 stability-table alleles are known to it, including
+`B*15:02`. The held-out HLA result came from a different fit. An allele
+outside the table, such as `C*07:02`, returns `allele_known: false` and the
+verdict says the interval is not calibrated. Weights are `models/member_*.pt`
+on volume `pmhc-data` under `/models/` (gitignored).
+
 Novelty is `data/features/novelty.parquet`, built from the corrected grooves
 (`seq_version=master_corrected_imgt_5b915f27`). On the peptide test, a model
 fitted only on `calib` lifts error–uncertainty Spearman from 0.12 (`y_std`)
