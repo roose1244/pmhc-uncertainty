@@ -85,23 +85,23 @@ def _placeholder(peptide: str, hla: str) -> Prediction:
 
 
 def _local(peptide: str, hla: str) -> Prediction | None:
-    """Frozen models on disk, routed by whether the allele was in training.
-
-    Tried before the network: the demo should work with no endpoint deployed
-    and no connectivity, and these are the same weights an endpoint would
-    serve. Returns None when there is nothing to serve from.
-    """
+    """Frozen ensemble on disk. Same weights the endpoint serves."""
     try:
         import sys
-        from pathlib import Path
 
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-        from src.predict import predict as local_predict
+        from src.serve import predict as local_predict
 
-        r = local_predict(peptide, hla)
-        if r is None:
-            return None
-        return Prediction(r.mean, r.std, r.lo, r.hi, f"local:{r.model}")
+        result = local_predict(peptide, hla)
+        return Prediction(
+            float(result["log_half_life"]),
+            float(result["y_std"]),
+            float(result["lo"]),
+            float(result["hi"]),
+            "local",
+            verdict=str(result.get("verdict", "")),
+            hla_in_training=bool(result.get("allele_known")),
+        )
     except Exception:
         return None
 

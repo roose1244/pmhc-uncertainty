@@ -98,15 +98,8 @@ if pred.error:
     st.stop()
 rel = assess(peptide, hla, model_std=pred.std)
 
-if pred.source.startswith("local:"):
-    which = pred.source.split(":", 1)[1]
-    st.caption(
-        f"Served by the frozen **{which}** model running locally. "
-        + ("This allele was in training, so the one-hot model answers."
-           if which == "m1" else
-           "This allele was not in training, so the sequence-based model "
-           "answers — the one-hot model would see an all-zero allele vector.")
-    )
+if pred.source == "local":
+    st.caption("Served by the frozen ensemble on this machine. " + (pred.verdict or ""))
 elif pred.source == "endpoint":
     st.caption("Served by the frozen M1 ensemble. " + (pred.verdict or ""))
 elif pred.source != "endpoint":
